@@ -8,7 +8,7 @@
   :root {
     --bg: #0d1117; --surface: #161b22; --surface2: #1c2333; --border: #30363d;
     --text: #e6edf3; --muted: #7d8590; --accent: #58a6ff;
-    --success: #3fb950; --warn: #d29922; --error: #f85149;
+    --success: #3fb950; --warn: #d29920; --error: #f85149;
     --radius: 8px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -348,6 +348,14 @@
           <option value="test">test</option>
         </select>
       </div>
+          ${(() => {
+              const isUnk = step.platform && !contracts[step.platform];
+              if (!isUnk) return '';
+              return `<div style="grid-column:1/-1; background:#d2992015; border:1px solid var(--warn,#d29920); border-radius:var(--radius); padding:6px 10px; font-size:11px; color:var(--warn,#d29920); display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                ⚠️ <strong>${esc(step.platform)}</strong> is not a known contract.
+                <button class="btn btn-s" style="background:var(--warn,#d29920); color:#000; padding:2px 10px; font-size:11px; border:none; cursor:pointer;" onclick="importAsContract(${idx})">Import as Contract</button>
+              </div>`;
+            })()}
     </div>
     <div style="margin-top:14px;">
       <div class="flex-b" style="flex-direction:row;">
@@ -1430,7 +1438,7 @@ function renderRecipeCard(r, isCommunity) {
             <span class="tag" style="background:var(--surface2); color:var(--muted);">${(r.steps||[]).length} step${(r.steps||[]).length!==1?"s":""}</span>
             <span class="tag" style="background:var(--surface2); color:var(--muted);">${totalVars} vars (${reqVars} required)</span>
             <span class="tag" style="background:var(--surface2); color:var(--muted);">${esc(r.complexity || "")}</span>
-            ${isCommunity ? '<span class="tag" style="background:#23863620; color:var(--success);">community</span>' : '<span class="tag" style="background:#d2992220; color:var(--warn);">custom</span>'}
+            ${isCommunity ? '<span class="tag" style="background:#23863620; color:var(--success);">community</span>' : '<span class="tag" style="background:#d2992020; color:var(--warn);">custom</span>'}
           </div>
         </div>
         <div style="display:flex; gap:6px; flex-wrap:wrap;">
@@ -1491,11 +1499,12 @@ function generateRecipeProfiles(recipeId, isCustom) {
   const r = isCustom ? customRecipes[recipeId] : recipes[recipeId];
   if (!r) return;
   let created = 0;
+  let skippedSteps = [];
   for (const step of (r.steps || [])) {
     const pid = `${r.id}-${step.id}`;
     if (profiles[pid]) continue;
     const c = contracts[step.platform];
-    if (!c) continue;
+    if (!c) { skippedSteps.push(step.platform + ' (' + (step.label || step.id) + ')'); continue; }
     const vars = (step.shared_vars || []).map(v => ({
       key: v.key,
       description: v.description,
@@ -1529,6 +1538,19 @@ function generateRecipeProfiles(recipeId, isCustom) {
         All profiles for this recipe already exist. Delete them from Profiles tab to regenerate.
       </div>`;
     }
+
+  // Report skipped unknown-platform steps
+  if (skippedSteps.length > 0 && msg) {
+    const skipHtml = `<div style="background:#d2992020; border:1px solid var(--warn, #d29920); border-radius:var(--radius); padding:8px 12px; font-size:12px; color:var(--warn, #d29920); margin-top:6px;">
+      ⚠️ <strong>${skippedSteps.length} step${skippedSteps.length > 1 ? "s" : ""} skipped</strong> (unknown platform${skippedSteps.length > 1 ? "s" : ""}):<br>
+      ${skippedSteps.map(s => "• " + s).join("<br>")}
+      <br><em>Import these platforms as contracts in the Recipe Builder to include them.</em>
+    </div>`;
+    const skipDiv = document.createElement("div");
+    skipDiv.innerHTML = skipHtml;
+    msg.appendChild(skipDiv.firstElementChild);
+  }
+
   }
 }
 
@@ -1593,7 +1615,7 @@ function renderBuilderSteps() {
   }
   if (empty) empty.style.display = "none";
 
-  const platformOpts = Object.keys(contracts).sort().map(id =>
+  const knownPlatformOpts = Object.keys(contracts).sort().map(id =>
     `<option value="${esc(id)}">${esc(contracts[id].name)}</option>`
   ).join("");
 
@@ -1630,7 +1652,16 @@ function renderBuilderSteps() {
           <div style="flex:1; min-width:140px;">
             <label style="font-size:11px;">Platform</label>
             <select value="${esc(step.platform)}" onchange="updateStep(${idx},'platform',this.value); renderBuilderSteps();">
-              ${platformOpts.replace(`value="${esc(step.platform)}"`, `value="${esc(step.platform)}" selected`)}
+              ${(() => {
+                const isUnknown = step.platform && !contracts[step.platform];
+                let opts = knownPlatformOpts;
+                if (isUnknown) {
+                  opts = `<option value="${esc(step.platform)}" selected>⚠️ ${esc(step.platform)} (unknown)</option>` + opts;
+                } else {
+                  opts = opts.replace(`value="${esc(step.platform)}"`, `value="${esc(step.platform)}" selected`);
+                }
+                return opts;
+              })()}
             </select>
           </div>
           <div style="flex:1; min-width:100px;">
@@ -1841,8 +1872,9 @@ const _VALID_ROLES = new Set(["build", "ci", "deploy", "secrets", "routing", "mo
 
 function validateRecipeJson(raw) {
   const errors = [];
+  const warnings = [];
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    return ["Input must be a JSON object, not " + typeof raw];
+    return { errors: ["Input must be a JSON object, not " + typeof raw], warnings: [] };
   }
   // Required fields
   for (const f of ["id", "name", "description", "category", "steps"]) {
@@ -1865,10 +1897,11 @@ function validateRecipeJson(raw) {
   }
   // Steps
   const steps = raw.steps;
+  const knownPlatforms = new Set(Object.keys(contracts));
   if (steps !== undefined) {
     if (!Array.isArray(steps)) {
       errors.push("'steps' must be an array");
-      return errors;
+      return { errors, warnings };
     }
     if (steps.length === 0) {
       errors.push("'steps' must not be empty");
@@ -1890,6 +1923,10 @@ function validateRecipeJson(raw) {
       if (step.role && !_VALID_ROLES.has(step.role)) {
         errors.push(`${p}: invalid role '${step.role}'`);
       }
+      // Platform check — warn, don't block
+      if (step.platform && knownPlatforms.size > 0 && !knownPlatforms.has(step.platform)) {
+        warnings.push(`${p}: platform '${step.platform}' is not in the system yet — you can import it as a new contract after loading`);
+      }
       (step.depends_on || []).forEach(dep => {
         if (!allIds.has(dep)) errors.push(`${p}: depends_on references '${dep}' which doesn't exist`);
       });
@@ -1900,7 +1937,7 @@ function validateRecipeJson(raw) {
       });
     });
   }
-  return errors;
+  return { errors, warnings };
 }
 
 function importRecipeFromText() {
@@ -1951,11 +1988,13 @@ function importRecipeFromFile(event) {
 }
 
 function importRecipeData(parsed, msg) {
-  const errors = validateRecipeJson(parsed);
-  if (errors.length > 0) {
-    showImportMsg(msg, "error", "Validation errors:<br>" + errors.map(e => `• ${esc(e)}`).join("<br>"));
+  const result = validateRecipeJson(parsed);
+  if (result.errors.length > 0) {
+    showImportMsg(msg, "error", "Validation errors:<br>" + result.errors.map(e => `• ${esc(e)}`).join("<br>"));
     return;
   }
+  // Store warnings for display after successful load
+  const importWarnings = result.warnings;
   // Populate the builder form
   document.getElementById("rb-id").value = parsed.id || "";
   document.getElementById("rb-id").disabled = false;
@@ -2018,6 +2057,82 @@ function clearImport() {
   if (ta) ta.value = "";
   if (msg) msg.innerHTML = "";
   if (file) file.value = "";
+}
+
+
+// ═══════════════════════════════════════════════════════
+// UNKNOWN PLATFORM → CONTRACT SCAFFOLDING
+// ═══════════════════════════════════════════════════════
+const _ROLE_TO_CATEGORY = {
+  build: "container", ci: "ci-cd", deploy: "cloud", secrets: "cloud",
+  routing: "cloud", monitoring: "cloud", storage: "cloud", iac: "cloud", cdn: "edge"
+};
+
+function scaffoldContractFromStep(step) {
+  const pid = step.platform || "unknown";
+  const humanName = pid.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+  const backends = new Set(["env-file"]);
+  (step.shared_vars || []).forEach(v => {
+    if (v.suggested_backend) backends.add(v.suggested_backend);
+  });
+  const requiredVars = (step.shared_vars || []).filter(v => v.required).map(v => ({
+    key: v.key,
+    description: v.description || "",
+    required: true,
+    secret_ref: {
+      backend: v.suggested_backend || "env-file",
+      path: v.suggested_path || v.key.toLowerCase(),
+      version: null
+    }
+  }));
+  const optionalVars = (step.shared_vars || []).filter(v => !v.required).map(v => ({
+    key: v.key,
+    description: v.description || "",
+    required: false,
+    secret_ref: {
+      backend: v.suggested_backend || "env-file",
+      path: v.suggested_path || v.key.toLowerCase(),
+      version: null
+    }
+  }));
+
+  return {
+    id: pid,
+    name: humanName,
+    category: _ROLE_TO_CATEGORY[step.role] || "cloud",
+    secret_backends: Array.from(backends),
+    required_vars: requiredVars,
+    optional_vars: optionalVars,
+    export_formats: ["env", "json", "yaml"],
+    notes: `Scaffolded from recipe step: ${step.label || step.id}`
+  };
+}
+
+function importAsContract(stepIdx) {
+  const step = builderSteps[stepIdx];
+  if (!step || !step.platform) return;
+  if (contracts[step.platform]) {
+    alert(`"${step.platform}" is already a known contract.`);
+    return;
+  }
+  const contract = scaffoldContractFromStep(step);
+
+  // Register in-memory so profile generation works immediately
+  contracts[step.platform] = contract;
+
+  // Re-render builder to remove the warning badge
+  renderBuilderSteps();
+
+  // Show confirmation
+  const msg = document.getElementById("rb-msg");
+  if (msg) {
+    showImportMsg(msg, "success",
+      `✅ <strong>${esc(contract.name)}</strong> imported as a local contract (${contract.secret_backends.join(", ")} backends, ${contract.required_vars.length + contract.optional_vars.length} vars). Profile generation will now include this platform.`
+    );
+  }
+
+  // Also refresh overview/profiles in case they're watching contracts
+  refreshAll();
 }
 
 
