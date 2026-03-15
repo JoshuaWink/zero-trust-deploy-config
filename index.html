@@ -236,6 +236,19 @@
   .recipe-sub { background: var(--surface2); border: 1px solid var(--border); }
   .recipe-sub.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
   .recipe-panel { }
+
+  /* Security indicator */
+  .security-bar { display:flex; align-items:center; gap:8px; padding:6px 12px; border-radius:var(--radius); font-size:11px; margin-bottom:8px; }
+  .security-bar.locked { background:#23863615; border:1px solid var(--success); color:var(--success); }
+  .security-bar.unlocked { background:#d2992015; border:1px solid var(--warn, #d29920); color:var(--warn, #d29920); }
+  .security-bar button { font-size:10px; padding:2px 8px; cursor:pointer; border-radius:4px; border:1px solid currentColor; background:transparent; color:inherit; }
+  .security-bar button:hover { opacity:0.8; }
+  #passphrase-modal { position:fixed; inset:0; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:1000; }
+  #passphrase-modal .modal-box { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; max-width:400px; width:90%; }
+  #passphrase-modal h3 { margin-bottom:12px; }
+  #passphrase-modal input { width:100%; margin-bottom:8px; }
+  #passphrase-modal .modal-actions { display:flex; gap:8px; margin-top:12px; }
+
 </style>
 </head>
 <body>
@@ -255,6 +268,14 @@
   <button data-page="recipes">Recipes</button>
   <button data-page="contribute">Contribute</button>
 </nav>
+
+
+<div id="security-bar" class="security-bar unlocked" style="max-width:960px; margin:0 auto;">
+  <span id="security-icon">🔓</span>
+  <span id="security-label">Data unencrypted — stored in plain text</span>
+  <span style="flex:1;"></span>
+  <button onclick="showPassphraseModal('setup')">Set Passphrase</button>
+</div>
 
 <main>
 
@@ -514,6 +535,84 @@
     </div>
   </div>
 
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     PAGE: CONTRIBUTE — Submit contracts & recipes via GitHub PR
+     ═══════════════════════════════════════════════════════════════════ -->
+<div id="pg-contribute" class="page">
+  <h2>Contribute</h2>
+  <p class="muted" style="margin-bottom:16px;">Submit new platform contracts or deployment recipes to the community via GitHub Pull Request. Requires a <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--accent);">GitHub Personal Access Token</a> with <code>repo</code> scope.</p>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+
+    <!-- Contract Submission -->
+    <div class="card" style="border-top:3px solid var(--accent);">
+      <h3 style="margin-bottom:12px;">📋 Submit Contract</h3>
+      <p class="muted" style="font-size:12px; margin-bottom:12px;">Paste a platform contract JSON. It will be validated against the schema before submission.</p>
+
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div>
+          <label style="font-size:11px;">GitHub Username</label>
+          <input id="sub-user" placeholder="your-username" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:11px;">Personal Access Token</label>
+          <input id="sub-token" type="password" placeholder="ghp_xxxxxxxxxxxx" style="width:100%;" autocomplete="off">
+          <span class="muted" style="font-size:10px;">🔒 Never stored — used only for this request</span>
+        </div>
+        <div>
+          <label style="font-size:11px;">Contract JSON</label>
+          <textarea id="sub-json" rows="10" placeholder='{"id":"my-platform","name":"My Platform","category":"cloud",...}' style="width:100%; font-family:var(--mono); font-size:11px;"></textarea>
+        </div>
+        <div>
+          <label style="font-size:11px;">Notes (optional)</label>
+          <input id="sub-notes" placeholder="Any context for reviewers..." style="width:100%;">
+        </div>
+        <button class="btn" onclick="submitContract()">Submit Contract PR</button>
+        <div id="submit-result"></div>
+      </div>
+    </div>
+
+    <!-- Recipe Submission -->
+    <div class="card" style="border-top:3px solid var(--success);">
+      <h3 style="margin-bottom:12px;">🍳 Submit Recipe</h3>
+      <p class="muted" style="font-size:12px; margin-bottom:12px;">Share a deployment recipe with the community. Build it in the <strong>Recipes → Builder</strong> tab first, then paste the exported JSON here.</p>
+
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div>
+          <label style="font-size:11px;">GitHub Username</label>
+          <input id="sub-recipe-user" placeholder="your-username" style="width:100%;"
+                 oninput="document.getElementById('sub-user').value = this.value;">
+        </div>
+        <div>
+          <label style="font-size:11px;">Personal Access Token</label>
+          <input id="sub-recipe-token" type="password" placeholder="ghp_xxxxxxxxxxxx" style="width:100%;" autocomplete="off"
+                 oninput="document.getElementById('sub-token').value = this.value;">
+          <span class="muted" style="font-size:10px;">🔒 Never stored — used only for this request</span>
+        </div>
+        <div>
+          <label style="font-size:11px;">Recipe JSON</label>
+          <textarea id="sub-recipe-json" rows="10" placeholder='{"id":"my-stack","name":"My Stack","category":"api",...}' style="width:100%; font-family:var(--mono); font-size:11px;"></textarea>
+        </div>
+        <button class="btn" style="background:var(--success);" onclick="submitRecipe()">Submit Recipe PR</button>
+        <div id="submit-recipe-result"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="card" style="margin-top:16px; border-color:var(--warn, #d29920);">
+    <h4 style="color:var(--warn, #d29920);">⚠️ Contribution Guidelines</h4>
+    <ul style="font-size:12px; padding-left:18px; margin:8px 0 0 0; line-height:1.8;">
+      <li>Contracts must follow the <a href="https://github.com/JoshuaWink/zero-trust-deploy-config" target="_blank" style="color:var(--accent);">schema spec</a></li>
+      <li>Use kebab-case IDs (e.g. <code>aws-lambda</code>, <code>gcp-cloud-run</code>)</li>
+      <li>Include at least one <code>secret_backend</code> and one <code>export_format</code></li>
+      <li>Add meaningful descriptions and notes for reviewers</li>
+      <li>Your GitHub token is <strong>never stored</strong> — it's used for the PR API call only</li>
+    </ul>
+  </div>
 </div>
 
 </main>
@@ -2253,6 +2352,293 @@ function esc(s) {
   if (s == null) return "";
   const d = document.createElement("div"); d.textContent = String(s); return d.innerHTML;
 }
+
+// ═══════════════════════════════════════════════════════════════
+// CLIENT-SIDE ENCRYPTION — Web Crypto AES-GCM + PBKDF2
+// ═══════════════════════════════════════════════════════════════
+
+let _sessionKey = null;       // CryptoKey cached in memory (session only)
+let _encryptionEnabled = false;
+const ENCRYPTED_PREFIX = "ztdc_enc:";  // Marker prefix for encrypted values
+
+async function deriveKeyFromPassphrase(passphrase, salt) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw", enc.encode(passphrase), "PBKDF2", false, ["deriveKey"]
+  );
+  return crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
+
+async function encryptData(data, key) {
+  const enc = new TextEncoder();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const plaintext = enc.encode(JSON.stringify(data));
+  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plaintext);
+  // Pack: salt(16) + iv(12) + ciphertext
+  const packed = new Uint8Array(salt.length + iv.length + new Uint8Array(ciphertext).length);
+  packed.set(salt, 0);
+  packed.set(iv, salt.length);
+  packed.set(new Uint8Array(ciphertext), salt.length + iv.length);
+  return ENCRYPTED_PREFIX + btoa(String.fromCharCode(...packed));
+}
+
+async function decryptData(encrypted, key) {
+  if (!encrypted.startsWith(ENCRYPTED_PREFIX)) {
+    // Not encrypted — return as plain JSON parse
+    return JSON.parse(encrypted);
+  }
+  const raw = encrypted.slice(ENCRYPTED_PREFIX.length);
+  const bytes = Uint8Array.from(atob(raw), c => c.charCodeAt(0));
+  const iv = bytes.slice(16, 28);
+  const ciphertext = bytes.slice(28);
+  const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
+  return JSON.parse(new TextDecoder().decode(decrypted));
+}
+
+// ── Secure Storage Wrappers ──
+
+async function secureSetItem(storageKey, data) {
+  if (_encryptionEnabled && _sessionKey) {
+    const encrypted = await encryptData(data, _sessionKey);
+    localStorage.setItem(storageKey, encrypted);
+  } else {
+    localStorage.setItem(storageKey, JSON.stringify(data));
+  }
+}
+
+async function secureGetItem(storageKey) {
+  const raw = localStorage.getItem(storageKey);
+  if (!raw) return null;
+  if (_encryptionEnabled && _sessionKey && raw.startsWith(ENCRYPTED_PREFIX)) {
+    try {
+      return await decryptData(raw, _sessionKey);
+    } catch (e) {
+      console.warn("Decryption failed for", storageKey, "— data may use a different passphrase.");
+      return null;
+    }
+  }
+  // Plain JSON fallback
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+// ── Override save/load functions to use encryption ──
+
+const _origSaveProfiles = typeof saveProfiles === "function" ? saveProfiles : null;
+const _origLoadProfiles = typeof loadProfiles === "function" ? loadProfiles : null;
+const _origSaveCustomRecipes = typeof saveCustomRecipes === "function" ? saveCustomRecipes : null;
+const _origLoadCustomRecipes = typeof loadCustomRecipes === "function" ? loadCustomRecipes : null;
+
+async function saveProfilesSecure() {
+  await secureSetItem(STORAGE_KEY, profiles);
+}
+
+async function loadProfilesSecure() {
+  const data = await secureGetItem(STORAGE_KEY);
+  profiles = data || {};
+}
+
+async function saveCustomRecipesSecure() {
+  await secureSetItem(CUSTOM_RECIPES_KEY, customRecipes);
+}
+
+async function loadCustomRecipesSecure() {
+  const data = await secureGetItem(CUSTOM_RECIPES_KEY);
+  customRecipes = data || {};
+}
+
+// Replace sync functions with async wrappers when encryption is enabled
+function enableEncryptedStorage() {
+  saveProfiles = function() { saveProfilesSecure(); };
+  loadProfiles = function() { loadProfilesSecure().then(() => refreshAll()); };
+  saveCustomRecipes = function() { saveCustomRecipesSecure(); };
+  loadCustomRecipes = function() { loadCustomRecipesSecure().then(() => { renderMyRecipes(); }); };
+}
+
+// ── Passphrase Modal ──
+
+function showPassphraseModal(mode) {
+  // mode: 'setup' | 'unlock' | 'change'
+  const existing = document.getElementById("passphrase-modal");
+  if (existing) existing.remove();
+
+  const isSetup = mode === "setup";
+  const isChange = mode === "change";
+  const title = isSetup ? "🔐 Set Encryption Passphrase" : isChange ? "🔑 Change Passphrase" : "🔓 Unlock Your Data";
+  const desc = isSetup
+    ? "Choose a passphrase to encrypt your deployment configs in this browser. Your data never leaves your machine."
+    : isChange
+    ? "Enter your current passphrase, then set a new one."
+    : "Enter your passphrase to decrypt your saved data.";
+
+  const modal = document.createElement("div");
+  modal.id = "passphrase-modal";
+  modal.innerHTML = `
+    <div class="modal-box">
+      <h3>${title}</h3>
+      <p class="muted" style="font-size:12px; margin-bottom:12px;">${desc}</p>
+      ${isChange ? '<div><label style="font-size:11px;">Current Passphrase</label><input id="pp-current" type="password" placeholder="Current passphrase"></div>' : ''}
+      <div><label style="font-size:11px;">${isChange ? 'New Passphrase' : 'Passphrase'}</label><input id="pp-input" type="password" placeholder="Enter passphrase (min 6 characters)"></div>
+      ${isSetup || isChange ? '<div><label style="font-size:11px;">Confirm</label><input id="pp-confirm" type="password" placeholder="Confirm passphrase"></div>' : ''}
+      <div id="pp-error" style="color:var(--error); font-size:11px; min-height:16px;"></div>
+      <div class="modal-actions">
+        <button class="btn" onclick="handlePassphrase('${mode}')">${isSetup ? 'Enable Encryption' : isChange ? 'Change Passphrase' : 'Unlock'}</button>
+        ${isSetup ? '<button class="btn btn-sec" onclick="closePassphraseModal()">Skip (No Encryption)</button>' : ''}
+        ${isChange ? '<button class="btn btn-sec" onclick="closePassphraseModal()">Cancel</button>' : ''}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  // Focus input
+  setTimeout(() => {
+    const inp = document.getElementById(isChange ? "pp-current" : "pp-input");
+    if (inp) inp.focus();
+  }, 100);
+  // Enter key
+  modal.addEventListener("keydown", e => { if (e.key === "Enter") handlePassphrase(mode); });
+}
+
+function closePassphraseModal() {
+  const m = document.getElementById("passphrase-modal");
+  if (m) m.remove();
+}
+
+async function handlePassphrase(mode) {
+  const errEl = document.getElementById("pp-error");
+  const input = document.getElementById("pp-input");
+  const confirm = document.getElementById("pp-confirm");
+  const passphrase = (input ? input.value : "").trim();
+
+  if (passphrase.length < 6) {
+    if (errEl) errEl.textContent = "Passphrase must be at least 6 characters.";
+    return;
+  }
+
+  if (mode === "setup" || mode === "change") {
+    const conf = (confirm ? confirm.value : "").trim();
+    if (passphrase !== conf) {
+      if (errEl) errEl.textContent = "Passphrases don't match.";
+      return;
+    }
+  }
+
+  if (mode === "change") {
+    const current = (document.getElementById("pp-current") || {}).value || "";
+    // Verify current passphrase by trying to decrypt existing data
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw && raw.startsWith(ENCRYPTED_PREFIX)) {
+      try {
+        const salt = Uint8Array.from(atob(raw.slice(ENCRYPTED_PREFIX.length)), c => c.charCodeAt(0)).slice(0, 16);
+        const oldKey = await deriveKeyFromPassphrase(current, salt);
+        await decryptData(raw, oldKey);
+      } catch {
+        if (errEl) errEl.textContent = "Current passphrase is incorrect.";
+        return;
+      }
+    }
+  }
+
+  try {
+    // Derive key from passphrase with a fixed app salt for key derivation
+    const appSalt = new TextEncoder().encode("ztdc-encryption-v1");
+    _sessionKey = await deriveKeyFromPassphrase(passphrase, appSalt);
+    _encryptionEnabled = true;
+
+    // If there's existing unencrypted data, re-encrypt it
+    const existingProfiles = localStorage.getItem(STORAGE_KEY);
+    const existingRecipes = localStorage.getItem(CUSTOM_RECIPES_KEY);
+
+    if (existingProfiles && !existingProfiles.startsWith(ENCRYPTED_PREFIX)) {
+      try {
+        profiles = JSON.parse(existingProfiles);
+        await saveProfilesSecure();
+      } catch {}
+    }
+    if (existingRecipes && !existingRecipes.startsWith(ENCRYPTED_PREFIX)) {
+      try {
+        customRecipes = JSON.parse(existingRecipes);
+        await saveCustomRecipesSecure();
+      } catch {}
+    }
+
+    // Mark that encryption is enabled
+    localStorage.setItem("ztdc_encrypted", "true");
+    localStorage.setItem("ztdc_enc_check", await encryptData({check: true}, _sessionKey));
+
+    enableEncryptedStorage();
+    updateSecurityBar(true);
+    closePassphraseModal();
+
+    // Reload data with decryption
+    await loadProfilesSecure();
+    await loadCustomRecipesSecure();
+    refreshAll();
+  } catch (e) {
+    if (errEl) errEl.textContent = "Error: " + e.message;
+  }
+}
+
+async function unlockWithPassphrase(passphrase) {
+  const appSalt = new TextEncoder().encode("ztdc-encryption-v1");
+  _sessionKey = await deriveKeyFromPassphrase(passphrase, appSalt);
+
+  // Verify against check token
+  const check = localStorage.getItem("ztdc_enc_check");
+  if (check) {
+    try {
+      await decryptData(check, _sessionKey);
+    } catch {
+      _sessionKey = null;
+      throw new Error("Wrong passphrase");
+    }
+  }
+
+  _encryptionEnabled = true;
+  enableEncryptedStorage();
+  updateSecurityBar(true);
+
+  await loadProfilesSecure();
+  await loadCustomRecipesSecure();
+  refreshAll();
+}
+
+function updateSecurityBar(encrypted) {
+  const bar = document.getElementById("security-bar");
+  const icon = document.getElementById("security-icon");
+  const label = document.getElementById("security-label");
+  if (!bar) return;
+
+  if (encrypted) {
+    bar.className = "security-bar locked";
+    icon.textContent = "🔒";
+    label.textContent = "Data encrypted with your passphrase";
+    bar.querySelector("button").textContent = "Change Passphrase";
+    bar.querySelector("button").onclick = () => showPassphraseModal("change");
+  } else {
+    bar.className = "security-bar unlocked";
+    icon.textContent = "🔓";
+    label.textContent = "Data unencrypted — stored in plain text";
+    bar.querySelector("button").textContent = "Set Passphrase";
+    bar.querySelector("button").onclick = () => showPassphraseModal("setup");
+  }
+}
+
+// ── Boot: check if encryption was previously enabled ──
+(async function checkEncryptionState() {
+  const wasEncrypted = localStorage.getItem("ztdc_encrypted") === "true";
+  if (wasEncrypted) {
+    // Show unlock prompt
+    showPassphraseModal("unlock");
+  }
+})();
+
+
 </script>
 </body>
 </html>
