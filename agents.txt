@@ -10,7 +10,7 @@
 # are handled by a Cloudflare Worker API.
 
 agent-name: ztdc
-version: 0.3.0
+version: 0.4.0
 homepage: https://joshuawink.github.io/zero-trust-deploy-config/
 source: https://github.com/JoshuaWink/zero-trust-deploy-config
 license: MIT
@@ -62,6 +62,14 @@ endpoint: GET /agents.txt
 # Base: https://ztdc-github-oauth.orchie.workers.dev
 # ═══════════════════════════════════════════════════════════
 
+# --- Health ---
+
+endpoint: GET /health
+  description: Health check — returns status, version, and list of all endpoints
+  auth: none
+  returns: {"status": "ok", "version": "0.4.0", "endpoints": [...]}
+  example: curl -s https://ztdc-github-oauth.orchie.workers.dev/health | jq .
+
 # --- Authentication ---
 
 endpoint: POST /auth/github
@@ -102,12 +110,88 @@ endpoint: POST /api/v1/export
       -H "Content-Type: application/json" \
       -d '{"platform":"aws-lambda","name":"prod","vars":[{"key":"AWS_REGION","value":"us-east-1"}],"format":"env"}'
 
+endpoint: GET /api/v1/export/formats
+  description: List all supported export format IDs
+  auth: none
+  returns: {"formats": ["env", "docker-compose", ...]}
+  example: curl -s https://ztdc-github-oauth.orchie.workers.dev/api/v1/export/formats | jq .
+
+# --- Contracts (Worker proxy) ---
+
+endpoint: GET /api/v1/contracts
+  description: List all contracts (proxied from GH Pages)
+  auth: none
+  returns: {"contracts": [{"id": "kubernetes", "name": "Kubernetes", ...}, ...]}
+  example: curl -s https://ztdc-github-oauth.orchie.workers.dev/api/v1/contracts | jq .
+
+endpoint: GET /api/v1/contracts/{id}
+  description: Get a single contract (proxied from GH Pages)
+  auth: none
+  params: id — contract slug
+  example: curl -s https://ztdc-github-oauth.orchie.workers.dev/api/v1/contracts/kubernetes | jq .
+
+# --- Recipes (Worker proxy) ---
+
+endpoint: GET /api/v1/recipes
+  description: List all community recipes (proxied from GH Pages)
+  auth: none
+  returns: {"recipes": [{"id": "serverless-aws", ...}, ...]}
+  example: curl -s https://ztdc-github-oauth.orchie.workers.dev/api/v1/recipes | jq .
+
+endpoint: GET /api/v1/recipes/{id}
+  description: Get a single community recipe (proxied from GH Pages)
+  auth: none
+  params: id — recipe slug
+  example: curl -s https://ztdc-github-oauth.orchie.workers.dev/api/v1/recipes/serverless-aws | jq .
+
+# --- Recipe Operations ---
+
+endpoint: POST /api/v1/recipes/validate
+  description: Validate a recipe structure (categories, steps, shared vars)
+  auth: none
+  body: {"id": "...", "name": "...", "description": "...", "category": "api", "steps": [...]}
+  returns: {"valid": true, "errors": [], "warnings": []}
+  example: |
+    curl -X POST https://ztdc-github-oauth.orchie.workers.dev/api/v1/recipes/validate \
+      -H "Content-Type: application/json" \
+      -d '{"id":"my-recipe","name":"My Recipe","description":"Test","category":"api","steps":[{"id":"s1","platform":"kubernetes","role":"deploy"}]}'
+
+endpoint: POST /api/v1/recipes/fork
+  description: Fork a community recipe into a custom user recipe
+  auth: Bearer token (required)
+  body: {"recipe_id": "serverless-aws"}
+  returns: {"id": "serverless-aws-custom", "forked_from": "serverless-aws", ...}
+  example: |
+    curl -X POST https://ztdc-github-oauth.orchie.workers.dev/api/v1/recipes/fork \
+      -H "Authorization: Bearer YOUR_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d '{"recipe_id":"serverless-aws"}'
+
+endpoint: POST /api/v1/recipes/generate-profiles
+  description: Generate profile stubs for each step in a recipe
+  auth: Bearer token (required)
+  body: {"recipe_id": "serverless-aws"}
+  returns: {"created": 3, "profiles": [...], "skipped_steps": []}
+  example: |
+    curl -X POST https://ztdc-github-oauth.orchie.workers.dev/api/v1/recipes/generate-profiles \
+      -H "Authorization: Bearer YOUR_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d '{"recipe_id":"serverless-aws"}'
+
+# --- Demos ---
+
+endpoint: GET /api/v1/demos
+  description: Get demo profiles for onboarding and testing
+  auth: none
+  returns: {"saas-api-prod": {...}, "broken-deploy": {...}, "startup-mvp": {...}}
+  example: curl -s https://ztdc-github-oauth.orchie.workers.dev/api/v1/demos | jq .
+
 # --- Profiles (CRUD — requires auth) ---
 
 endpoint: GET /api/v1/profiles
   description: List all profiles for the authenticated user
   auth: Bearer token (required)
-  returns: [{"id": "...", "name": "...", "platform": "...", "vars": [...]}]
+  returns: {"profile-id": {"id": "...", "name": "...", "platform": "...", "vars": [...]}, ...}
   example: curl -s https://ztdc-github-oauth.orchie.workers.dev/api/v1/profiles -H "Authorization: Bearer YOUR_TOKEN" | jq .
 
 endpoint: GET /api/v1/profiles/{id}
@@ -137,30 +221,50 @@ endpoint: DELETE /api/v1/profiles/{id}
   auth: Bearer token (required)
   returns: {"deleted": true}
 
-# --- Recipes (CRUD for custom recipes — requires auth) ---
+# --- Custom Recipes (CRUD — requires auth) ---
 
 endpoint: GET /api/v1/recipes/custom
   description: List user's custom recipes
   auth: Bearer token (required)
+  returns: {"recipe-id": {...}, ...}
+  example: curl -s https://ztdc-github-oauth.orchie.workers.dev/api/v1/recipes/custom -H "Authorization: Bearer YOUR_TOKEN" | jq .
+
+endpoint: GET /api/v1/recipes/custom/{id}
+  description: Get a custom recipe by ID
+  auth: Bearer token (required)
+  returns: {"id": "...", "name": "...", "steps": [...]}
 
 endpoint: POST /api/v1/recipes/custom
   description: Create a custom recipe
   auth: Bearer token (required)
-  body: {"name": "...", "description": "...", "steps": [...]}
+  body: {"id": "my-recipe", "name": "...", "description": "...", "category": "api", "steps": [...]}
+  returns: {"id": "...", "name": "...", ...}
+  example: |
+    curl -X POST https://ztdc-github-oauth.orchie.workers.dev/api/v1/recipes/custom \
+      -H "Authorization: Bearer YOUR_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d '{"id":"my-recipe","name":"My Recipe","description":"Custom flow","category":"api","steps":[{"id":"s1","platform":"kubernetes","role":"deploy","label":"K8s"}]}'
+
+endpoint: PUT /api/v1/recipes/custom/{id}
+  description: Update a custom recipe
+  auth: Bearer token (required)
+  body: {"name": "...", "steps": [...]}
+  returns: {"id": "...", "name": "...", ...}
 
 endpoint: DELETE /api/v1/recipes/custom/{id}
   description: Delete a custom recipe
   auth: Bearer token (required)
+  returns: {"deleted": true}
 
 # ═══════════════════════════════════════════════════════════
 # QUICK START — Common scripting workflows
 # ═══════════════════════════════════════════════════════════
 
 # 1. Browse available platforms
-#    curl -s .../contracts/index.json | jq -r '.contracts[]'
+#    curl -s .../api/v1/contracts | jq '.contracts[].id'
 
 # 2. Check what AWS Lambda needs
-#    curl -s .../contracts/aws-lambda.json | jq '.required_vars'
+#    curl -s .../api/v1/contracts/aws-lambda | jq '.required_vars'
 
 # 3. Validate your config
 #    curl -X POST .../api/v1/validate -H "Content-Type: application/json" \
@@ -173,6 +277,23 @@ endpoint: DELETE /api/v1/recipes/custom/{id}
 # 5. Export as Kubernetes ConfigMap
 #    curl -X POST .../api/v1/export -H "Content-Type: application/json" \
 #      -d '{"platform":"kubernetes","name":"prod","vars":[...],"format":"k8s-configmap"}' | jq -r '.content' > configmap.yaml
+
+# 6. Get a token and manage profiles
+#    TOKEN=$(curl -s -X POST .../auth/token -H "Content-Type: application/json" \
+#      -d '{"provider":"github","user_id":"12345"}' | jq -r '.token')
+#    curl -s .../api/v1/profiles -H "Authorization: Bearer $TOKEN" | jq .
+
+# 7. Load a demo profile and validate it
+#    curl -s .../api/v1/demos | jq '."saas-api-prod"'
+
+# 8. Fork a community recipe, generate profiles, export
+#    curl -X POST .../api/v1/recipes/fork -H "Authorization: Bearer $TOKEN" \
+#      -H "Content-Type: application/json" -d '{"recipe_id":"serverless-aws"}'
+#    curl -X POST .../api/v1/recipes/generate-profiles -H "Authorization: Bearer $TOKEN" \
+#      -H "Content-Type: application/json" -d '{"recipe_id":"serverless-aws"}'
+
+# 9. List all export formats
+#    curl -s .../api/v1/export/formats | jq .
 
 # ═══════════════════════════════════════════════════════════
 # RATE LIMITS
@@ -195,5 +316,6 @@ endpoint: DELETE /api/v1/recipes/custom/{id}
 # 401: {"error": "Authentication required"}
 # 403: {"error": "Forbidden"}
 # 404: {"error": "Not found"}
+# 409: {"error": "Already exists"} (duplicate custom recipe ID)
 # 429: {"error": "Rate limit exceeded", "retry_after": 60}
 # 500: {"error": "Internal error"}
