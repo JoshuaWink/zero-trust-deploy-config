@@ -28,7 +28,8 @@
     "aws-secrets-manager",
     "gcp-secret-manager",
     "azure-key-vault",
-    "doppler"
+    "doppler",
+    "env-file"
   ],
   "export_formats": [
     "env-file",

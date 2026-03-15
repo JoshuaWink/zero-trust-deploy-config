@@ -205,7 +205,6 @@
   <button data-page="overview" class="active">Overview</button>
   <button data-page="profiles">Profiles</button>
   <button data-page="recipes">Recipes</button>
-  <button data-page="recipes">Recipes</button>
   <button data-page="contribute">Contribute</button>
 </nav>
 
@@ -358,47 +357,6 @@
   </div>
 </div>
 
-
-<!-- ═══════════════════════════════════════════════════════════════════════
-     PAGE: RECIPES — Multi-platform deployment stacks.
-     ═══════════════════════════════════════════════════════════════════════ -->
-<div id="pg-recipes" class="page">
-  <div class="card" style="border-color: var(--accent); background: linear-gradient(135deg, #161b22 0%, #1a2332 100%);">
-    <h2 style="margin-bottom:4px;">🧱 Deployment Recipes</h2>
-    <p class="muted" style="font-size:13px; margin:0;">
-      Recipes are <strong>multi-platform deployment stacks</strong> — composable blueprints that chain platform contracts together.
-      Pick a recipe, see the full pipeline, and generate linked profiles for every step.
-    </p>
-  </div>
-
-  <div class="card">
-    <div class="flex-b" style="flex-direction:row; align-items:end; flex-wrap:wrap; gap:10px;">
-      <div style="flex:1; min-width:200px;">
-        <label>Select Recipe</label>
-        <select id="recipe-select" onchange="renderRecipeDetail()">
-          <option value="">— choose a recipe —</option>
-        </select>
-      </div>
-      <div style="display:flex; gap:6px;">
-        <label style="font-size:11px; color:var(--muted);">Filter:</label>
-        <select id="recipe-filter" onchange="filterRecipes()" style="min-width:100px;">
-          <option value="">All</option>
-          <option value="starter">Starter</option>
-          <option value="intermediate">Intermediate</option>
-          <option value="advanced">Advanced</option>
-        </select>
-      </div>
-    </div>
-  </div>
-
-  <div id="recipe-out">
-    <div class="card"><div class="empty">
-      <div style="font-size:2rem; margin-bottom:8px;">🧱</div>
-      <p>Select a recipe to see the full deployment stack.</p>
-      <p class="muted" style="font-size:12px; margin-top:6px;">Each recipe shows which platforms compose together, what vars flow between them, and lets you generate linked profiles for the whole stack.</p>
-    </div></div>
-  </div>
-</div>
 
 <!-- ═══════════════════════════════════════════════════════════════════
      PAGE: CONTRIBUTE — Submit new platform contracts.
