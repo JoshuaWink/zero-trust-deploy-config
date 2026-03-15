@@ -197,13 +197,15 @@
   <span class="badge">STATIC</span>
   <span class="header-meta">
     <span id="hdr-contracts">—</span> contracts ·
-    <span id="hdr-profiles">—</span> profiles
+    <span id="hdr-profiles">—</span> profiles · <span id="hdr-recipes">—</span> recipes · <span id="hdr-recipes">—</span> recipes
   </span>
 </header>
 
 <nav id="nav">
   <button data-page="overview" class="active">Overview</button>
   <button data-page="profiles">Profiles</button>
+  <button data-page="recipes">Recipes</button>
+  <button data-page="recipes">Recipes</button>
   <button data-page="contribute">Contribute</button>
 </nav>
 
@@ -220,7 +222,7 @@
       <div style="flex:1; min-width:220px;">
         <h2 style="margin-bottom:4px;">🚀 Try the Live Demo</h2>
         <p class="muted" style="font-size:13px; margin:0;">
-          Load <strong>4 pre-built profiles</strong> — a passing K8s deploy, a Vercel app, an ECS worker,
+          Load <strong>7 pre-built profiles</strong> — a passing K8s deploy, a Vercel app, an ECS worker,
           and a broken deploy with intentional errors. See validation + exports instantly.
         </p>
       </div>
@@ -314,6 +316,90 @@
   </div>
 </div>
 
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     PAGE: RECIPES — Multi-platform deployment stacks.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div id="pg-recipes" class="page">
+  <div class="card" style="border-color: var(--accent); background: linear-gradient(135deg, #161b22 0%, #1a2332 100%);">
+    <h2 style="margin-bottom:4px;">🧱 Deployment Recipes</h2>
+    <p class="muted" style="font-size:13px; margin:0;">
+      Recipes are <strong>multi-platform deployment stacks</strong> — composable blueprints that chain platform contracts together.
+      Pick a recipe, see the full pipeline, and generate linked profiles for every step.
+    </p>
+  </div>
+
+  <div class="card">
+    <div class="flex-b" style="flex-direction:row; align-items:end; flex-wrap:wrap; gap:10px;">
+      <div style="flex:1; min-width:200px;">
+        <label>Select Recipe</label>
+        <select id="recipe-select" onchange="renderRecipeDetail()">
+          <option value="">— choose a recipe —</option>
+        </select>
+      </div>
+      <div style="display:flex; gap:6px;">
+        <label style="font-size:11px; color:var(--muted);">Filter:</label>
+        <select id="recipe-filter" onchange="filterRecipes()" style="min-width:100px;">
+          <option value="">All</option>
+          <option value="starter">Starter</option>
+          <option value="intermediate">Intermediate</option>
+          <option value="advanced">Advanced</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div id="recipe-out">
+    <div class="card"><div class="empty">
+      <div style="font-size:2rem; margin-bottom:8px;">🧱</div>
+      <p>Select a recipe to see the full deployment stack.</p>
+      <p class="muted" style="font-size:12px; margin-top:6px;">Each recipe shows which platforms compose together, what vars flow between them, and lets you generate linked profiles for the whole stack.</p>
+    </div></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     PAGE: RECIPES — Multi-platform deployment stacks.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div id="pg-recipes" class="page">
+  <div class="card" style="border-color: var(--accent); background: linear-gradient(135deg, #161b22 0%, #1a2332 100%);">
+    <h2 style="margin-bottom:4px;">🧱 Deployment Recipes</h2>
+    <p class="muted" style="font-size:13px; margin:0;">
+      Recipes are <strong>multi-platform deployment stacks</strong> — composable blueprints that chain platform contracts together.
+      Pick a recipe, see the full pipeline, and generate linked profiles for every step.
+    </p>
+  </div>
+
+  <div class="card">
+    <div class="flex-b" style="flex-direction:row; align-items:end; flex-wrap:wrap; gap:10px;">
+      <div style="flex:1; min-width:200px;">
+        <label>Select Recipe</label>
+        <select id="recipe-select" onchange="renderRecipeDetail()">
+          <option value="">— choose a recipe —</option>
+        </select>
+      </div>
+      <div style="display:flex; gap:6px;">
+        <label style="font-size:11px; color:var(--muted);">Filter:</label>
+        <select id="recipe-filter" onchange="filterRecipes()" style="min-width:100px;">
+          <option value="">All</option>
+          <option value="starter">Starter</option>
+          <option value="intermediate">Intermediate</option>
+          <option value="advanced">Advanced</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div id="recipe-out">
+    <div class="card"><div class="empty">
+      <div style="font-size:2rem; margin-bottom:8px;">🧱</div>
+      <p>Select a recipe to see the full deployment stack.</p>
+      <p class="muted" style="font-size:12px; margin-top:6px;">Each recipe shows which platforms compose together, what vars flow between them, and lets you generate linked profiles for the whole stack.</p>
+    </div></div>
+  </div>
+</div>
+
 <!-- ═══════════════════════════════════════════════════════════════════
      PAGE: CONTRIBUTE — Submit new platform contracts.
      ═══════════════════════════════════════════════════════════════════ -->
@@ -357,6 +443,7 @@
    ══════════════════════════════════════════════════════════════════════ */
 let contracts = {};
 let profiles = {};
+let recipes = {};
 const STORAGE_KEY = "ztdc_profiles";
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -366,6 +453,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupNav();
   loadProfilesFromStorage();
   await loadContracts();
+  await loadRecipes();
   refreshAll();
   // Show demo banner prominently if no profiles
   if (Object.keys(profiles).length === 0) {
@@ -398,6 +486,7 @@ function refreshAll() {
   populateSelects();
   renderProfiles();
   renderPlatforms();
+  populateRecipeSelect();
   updateHeaderMeta();
   renderOverview();
 }
@@ -405,6 +494,7 @@ function refreshAll() {
 function updateHeaderMeta() {
   document.getElementById("hdr-contracts").textContent = Object.keys(contracts).length;
   document.getElementById("hdr-profiles").textContent = Object.keys(profiles).length;
+  document.getElementById("hdr-recipes").textContent = Object.keys(recipes).length;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -1101,6 +1191,358 @@ function schemaCheck(d) {
   if (!Array.isArray(d.export_formats) || !d.export_formats.length) e.push("'export_formats' must be non-empty array.");
   return e;
 }
+
+
+/* ═════════════════════════════════════════════════════════════════════════
+   RECIPE LOADING + RENDERING
+   ═════════════════════════════════════════════════════════════════════════ */
+async function loadRecipes() {
+  try {
+    const base = getContractsBaseUrl().replace(/\/contracts$/, "/recipes");
+    const indexResp = await fetch(base + "/index.json");
+    if (!indexResp.ok) { console.warn("No recipes found"); return; }
+    const index = await indexResp.json();
+    const fetches = index.recipes.map(async (id) => {
+      const resp = await fetch(base + "/" + id + ".json");
+      if (resp.ok) { const d = await resp.json(); recipes[d.id] = d; }
+    });
+    await Promise.all(fetches);
+  } catch(e) { console.warn("Recipe loading failed:", e); }
+}
+
+function populateRecipeSelect() {
+  const sel = document.getElementById("recipe-select");
+  const filter = document.getElementById("recipe-filter");
+  if (!sel) return;
+  const fv = filter ? filter.value : "";
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">\u2014 choose a recipe \u2014</option>';
+  const sorted = Object.values(recipes).sort((a,b) => a.name.localeCompare(b.name));
+  for (const r of sorted) {
+    if (fv && r.complexity !== fv) continue;
+    const opt = document.createElement("option");
+    opt.value = r.id;
+    opt.textContent = `${r.name} (${r.complexity})`;
+    sel.appendChild(opt);
+  }
+  if (cur && recipes[cur]) sel.value = cur;
+}
+
+function filterRecipes() {
+  populateRecipeSelect();
+  renderRecipeDetail();
+}
+
+function renderRecipeDetail() {
+  const sel = document.getElementById("recipe-select");
+  const out = document.getElementById("recipe-out");
+  const r = recipes[sel ? sel.value : ""];
+  if (!r) {
+    out.innerHTML = `<div class="card"><div class="empty">
+      <div style="font-size:2rem; margin-bottom:8px;">\ud83e\uddf1</div>
+      <p>Select a recipe to see the full deployment stack.</p>
+      <p class="muted" style="font-size:12px; margin-top:6px;">Each recipe shows which platforms compose together, what vars flow between them, and lets you generate linked profiles for the whole stack.</p>
+    </div></div>`;
+    return;
+  }
+
+  const roleIcons = { build:"\ud83d\udce6", ci:"\u2699\ufe0f", deploy:"\ud83d\ude80", secrets:"\ud83d\udd10", routing:"\ud83c\udf10", monitoring:"\ud83d\udcca", storage:"\ud83d\uddc4\ufe0f", iac:"\ud83c\udfd7\ufe0f", cdn:"\u26a1" };
+  const complexIcons = { starter:"\ud83c\udf31", intermediate:"\u2699\ufe0f", advanced:"\ud83d\udd25" };
+
+  // Flow diagram
+  const flowHtml = r.flow ? `<div style="background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; font-family:monospace; font-size:13px; color:var(--accent); text-align:center; margin:12px 0; letter-spacing:0.5px;">${esc(r.flow)}</div>` : "";
+
+  // Steps
+  let stepsHtml = "";
+  for (const step of r.steps) {
+    const icon = roleIcons[step.role] || "\u2022";
+    const platName = contracts[step.platform] ? contracts[step.platform].name : step.platform;
+    const depStr = step.depends_on && step.depends_on.length ? `<span class="muted" style="font-size:11px;">depends on: ${step.depends_on.join(", ")}</span>` : "";
+
+    let varsHtml = "";
+    if (step.shared_vars && step.shared_vars.length) {
+      const rows = step.shared_vars.map(v =>
+        `<tr>
+          <td><code style="font-size:11px;">${esc(v.key)}</code></td>
+          <td style="font-size:11px;">${esc(v.description)}</td>
+          <td>${v.required ? '<span style="color:var(--error); font-size:11px;">required</span>' : '<span class="muted" style="font-size:11px;">optional</span>'}</td>
+          <td style="font-size:11px;"><span class="tag tag-i">${esc(v.suggested_backend || "—")}</span></td>
+        </tr>`
+      ).join("");
+      varsHtml = `<table class="tbl" style="margin-top:8px; font-size:12px;">
+        <thead><tr><th>Variable</th><th>Description</th><th>Required</th><th>Backend</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    }
+
+    stepsHtml += `
+      <div class="card" style="border-left:3px solid var(--accent); margin-bottom:8px;">
+        <div class="flex-b" style="flex-direction:row; align-items:center; gap:8px; flex-wrap:wrap;">
+          <div>
+            <span style="font-size:16px;">${icon}</span>
+            <strong>${esc(step.label)}</strong>
+            <span class="tag tag-i" style="margin-left:6px;">${esc(platName)}</span>
+            <span class="tag" style="background:var(--surface2); color:var(--muted); margin-left:4px;">${esc(step.role)}</span>
+          </div>
+          ${depStr}
+        </div>
+        ${step.notes ? `<p class="muted" style="font-size:12px; margin-top:6px;">${esc(step.notes)}</p>` : ""}
+        ${varsHtml}
+      </div>`;
+  }
+
+  // Total var count
+  const totalVars = r.steps.reduce((n, s) => n + (s.shared_vars ? s.shared_vars.length : 0), 0);
+  const reqVars = r.steps.reduce((n, s) => n + (s.shared_vars ? s.shared_vars.filter(v => v.required).length : 0), 0);
+
+  out.innerHTML = `
+    <div class="card">
+      <div class="flex-b" style="flex-direction:row; align-items:start; gap:12px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:250px;">
+          <h2 style="margin-bottom:4px;">${complexIcons[r.complexity] || ""} ${esc(r.name)}</h2>
+          <p class="muted" style="font-size:13px; margin-bottom:10px;">${esc(r.description)}</p>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; font-size:12px;">
+            <span class="tag tag-i">${esc(r.category)}</span>
+            <span class="tag" style="background:var(--surface2); color:var(--muted);">${r.steps.length} step${r.steps.length>1?"s":""}</span>
+            <span class="tag" style="background:var(--surface2); color:var(--muted);">${totalVars} vars (${reqVars} required)</span>
+            <span class="tag" style="background:var(--surface2); color:var(--muted);">${esc(r.complexity)}</span>
+          </div>
+        </div>
+        <button class="btn" onclick="generateRecipeProfiles('${esc(r.id)}')">\ud83d\ude80 Generate All Profiles</button>
+      </div>
+      ${flowHtml}
+      ${r.notes ? `<p style="font-size:12px; color:var(--warn); margin-top:8px;">\ud83d\udca1 ${esc(r.notes)}</p>` : ""}
+    </div>
+
+    <h3 style="margin:16px 0 8px; font-size:14px; color:var(--muted);">Pipeline Steps</h3>
+    ${stepsHtml}
+
+    <div id="recipe-gen-msg" style="margin-top:12px;"></div>
+  `;
+}
+
+function generateRecipeProfiles(recipeId) {
+  const r = recipes[recipeId];
+  if (!r) return;
+  let created = 0;
+  for (const step of r.steps) {
+    const pid = `${r.id}-${step.id}`;
+    if (profiles[pid]) continue; // don't overwrite existing
+    const c = contracts[step.platform];
+    if (!c) continue;
+    const vars = (step.shared_vars || []).map(v => ({
+      key: v.key,
+      description: v.description,
+      required: v.required || false,
+      secret_ref: {
+        backend: v.suggested_backend || c.secret_backends[0] || "env-file",
+        path: v.suggested_path || v.key.toLowerCase(),
+        version: null
+      }
+    }));
+    profiles[pid] = {
+      id: pid,
+      name: `${r.name} — ${step.label}`,
+      platform: step.platform,
+      environment: "production",
+      vars: vars,
+      metadata: { recipe: r.id, step: step.id }
+    };
+    created++;
+  }
+  saveProfiles();
+  refreshAll();
+
+  const msg = document.getElementById("recipe-gen-msg");
+  if (msg) {
+    if (created > 0) {
+      msg.innerHTML = `<div style="background:#23863620; border:1px solid var(--success); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--success);">
+        \u2705 Generated ${created} profile${created>1?"s":""}! Switch to <strong>Profiles</strong> tab or <strong>Overview</strong> to view them.
+      </div>`;
+    } else {
+      msg.innerHTML = `<div style="background:#1f6feb20; border:1px solid var(--accent); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--accent);">
+        All profiles for this recipe already exist. Delete them from Profiles tab to regenerate.
+      </div>`;
+    }
+  }
+}
+
+
+
+/* ═════════════════════════════════════════════════════════════════════════
+   RECIPE LOADING + RENDERING
+   ═════════════════════════════════════════════════════════════════════════ */
+async function loadRecipes() {
+  try {
+    const base = getContractsBaseUrl().replace(/\/contracts$/, "/recipes");
+    const indexResp = await fetch(base + "/index.json");
+    if (!indexResp.ok) { console.warn("No recipes found"); return; }
+    const index = await indexResp.json();
+    const fetches = index.recipes.map(async (id) => {
+      const resp = await fetch(base + "/" + id + ".json");
+      if (resp.ok) { const d = await resp.json(); recipes[d.id] = d; }
+    });
+    await Promise.all(fetches);
+  } catch(e) { console.warn("Recipe loading failed:", e); }
+}
+
+function populateRecipeSelect() {
+  const sel = document.getElementById("recipe-select");
+  const filter = document.getElementById("recipe-filter");
+  if (!sel) return;
+  const fv = filter ? filter.value : "";
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">\u2014 choose a recipe \u2014</option>';
+  const sorted = Object.values(recipes).sort((a,b) => a.name.localeCompare(b.name));
+  for (const r of sorted) {
+    if (fv && r.complexity !== fv) continue;
+    const opt = document.createElement("option");
+    opt.value = r.id;
+    opt.textContent = `${r.name} (${r.complexity})`;
+    sel.appendChild(opt);
+  }
+  if (cur && recipes[cur]) sel.value = cur;
+}
+
+function filterRecipes() {
+  populateRecipeSelect();
+  renderRecipeDetail();
+}
+
+function renderRecipeDetail() {
+  const sel = document.getElementById("recipe-select");
+  const out = document.getElementById("recipe-out");
+  const r = recipes[sel ? sel.value : ""];
+  if (!r) {
+    out.innerHTML = `<div class="card"><div class="empty">
+      <div style="font-size:2rem; margin-bottom:8px;">\ud83e\uddf1</div>
+      <p>Select a recipe to see the full deployment stack.</p>
+      <p class="muted" style="font-size:12px; margin-top:6px;">Each recipe shows which platforms compose together, what vars flow between them, and lets you generate linked profiles for the whole stack.</p>
+    </div></div>`;
+    return;
+  }
+
+  const roleIcons = { build:"\ud83d\udce6", ci:"\u2699\ufe0f", deploy:"\ud83d\ude80", secrets:"\ud83d\udd10", routing:"\ud83c\udf10", monitoring:"\ud83d\udcca", storage:"\ud83d\uddc4\ufe0f", iac:"\ud83c\udfd7\ufe0f", cdn:"\u26a1" };
+  const complexIcons = { starter:"\ud83c\udf31", intermediate:"\u2699\ufe0f", advanced:"\ud83d\udd25" };
+
+  // Flow diagram
+  const flowHtml = r.flow ? `<div style="background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; font-family:monospace; font-size:13px; color:var(--accent); text-align:center; margin:12px 0; letter-spacing:0.5px;">${esc(r.flow)}</div>` : "";
+
+  // Steps
+  let stepsHtml = "";
+  for (const step of r.steps) {
+    const icon = roleIcons[step.role] || "\u2022";
+    const platName = contracts[step.platform] ? contracts[step.platform].name : step.platform;
+    const depStr = step.depends_on && step.depends_on.length ? `<span class="muted" style="font-size:11px;">depends on: ${step.depends_on.join(", ")}</span>` : "";
+
+    let varsHtml = "";
+    if (step.shared_vars && step.shared_vars.length) {
+      const rows = step.shared_vars.map(v =>
+        `<tr>
+          <td><code style="font-size:11px;">${esc(v.key)}</code></td>
+          <td style="font-size:11px;">${esc(v.description)}</td>
+          <td>${v.required ? '<span style="color:var(--error); font-size:11px;">required</span>' : '<span class="muted" style="font-size:11px;">optional</span>'}</td>
+          <td style="font-size:11px;"><span class="tag tag-i">${esc(v.suggested_backend || "—")}</span></td>
+        </tr>`
+      ).join("");
+      varsHtml = `<table class="tbl" style="margin-top:8px; font-size:12px;">
+        <thead><tr><th>Variable</th><th>Description</th><th>Required</th><th>Backend</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    }
+
+    stepsHtml += `
+      <div class="card" style="border-left:3px solid var(--accent); margin-bottom:8px;">
+        <div class="flex-b" style="flex-direction:row; align-items:center; gap:8px; flex-wrap:wrap;">
+          <div>
+            <span style="font-size:16px;">${icon}</span>
+            <strong>${esc(step.label)}</strong>
+            <span class="tag tag-i" style="margin-left:6px;">${esc(platName)}</span>
+            <span class="tag" style="background:var(--surface2); color:var(--muted); margin-left:4px;">${esc(step.role)}</span>
+          </div>
+          ${depStr}
+        </div>
+        ${step.notes ? `<p class="muted" style="font-size:12px; margin-top:6px;">${esc(step.notes)}</p>` : ""}
+        ${varsHtml}
+      </div>`;
+  }
+
+  // Total var count
+  const totalVars = r.steps.reduce((n, s) => n + (s.shared_vars ? s.shared_vars.length : 0), 0);
+  const reqVars = r.steps.reduce((n, s) => n + (s.shared_vars ? s.shared_vars.filter(v => v.required).length : 0), 0);
+
+  out.innerHTML = `
+    <div class="card">
+      <div class="flex-b" style="flex-direction:row; align-items:start; gap:12px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:250px;">
+          <h2 style="margin-bottom:4px;">${complexIcons[r.complexity] || ""} ${esc(r.name)}</h2>
+          <p class="muted" style="font-size:13px; margin-bottom:10px;">${esc(r.description)}</p>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; font-size:12px;">
+            <span class="tag tag-i">${esc(r.category)}</span>
+            <span class="tag" style="background:var(--surface2); color:var(--muted);">${r.steps.length} step${r.steps.length>1?"s":""}</span>
+            <span class="tag" style="background:var(--surface2); color:var(--muted);">${totalVars} vars (${reqVars} required)</span>
+            <span class="tag" style="background:var(--surface2); color:var(--muted);">${esc(r.complexity)}</span>
+          </div>
+        </div>
+        <button class="btn" onclick="generateRecipeProfiles('${esc(r.id)}')">\ud83d\ude80 Generate All Profiles</button>
+      </div>
+      ${flowHtml}
+      ${r.notes ? `<p style="font-size:12px; color:var(--warn); margin-top:8px;">\ud83d\udca1 ${esc(r.notes)}</p>` : ""}
+    </div>
+
+    <h3 style="margin:16px 0 8px; font-size:14px; color:var(--muted);">Pipeline Steps</h3>
+    ${stepsHtml}
+
+    <div id="recipe-gen-msg" style="margin-top:12px;"></div>
+  `;
+}
+
+function generateRecipeProfiles(recipeId) {
+  const r = recipes[recipeId];
+  if (!r) return;
+  let created = 0;
+  for (const step of r.steps) {
+    const pid = `${r.id}-${step.id}`;
+    if (profiles[pid]) continue; // don't overwrite existing
+    const c = contracts[step.platform];
+    if (!c) continue;
+    const vars = (step.shared_vars || []).map(v => ({
+      key: v.key,
+      description: v.description,
+      required: v.required || false,
+      secret_ref: {
+        backend: v.suggested_backend || c.secret_backends[0] || "env-file",
+        path: v.suggested_path || v.key.toLowerCase(),
+        version: null
+      }
+    }));
+    profiles[pid] = {
+      id: pid,
+      name: `${r.name} — ${step.label}`,
+      platform: step.platform,
+      environment: "production",
+      vars: vars,
+      metadata: { recipe: r.id, step: step.id }
+    };
+    created++;
+  }
+  saveProfiles();
+  refreshAll();
+
+  const msg = document.getElementById("recipe-gen-msg");
+  if (msg) {
+    if (created > 0) {
+      msg.innerHTML = `<div style="background:#23863620; border:1px solid var(--success); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--success);">
+        \u2705 Generated ${created} profile${created>1?"s":""}! Switch to <strong>Profiles</strong> tab or <strong>Overview</strong> to view them.
+      </div>`;
+    } else {
+      msg.innerHTML = `<div style="background:#1f6feb20; border:1px solid var(--accent); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--accent);">
+        All profiles for this recipe already exist. Delete them from Profiles tab to regenerate.
+      </div>`;
+    }
+  }
+}
+
 
 /* ══════════════════════════════════════════════════════════════════════
    DEMO PROFILES

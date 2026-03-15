@@ -1,0 +1,87 @@
+{
+  "id": "paas-heroku",
+  "name": "Heroku PaaS Stack",
+  "description": "Classic PaaS deployment: push code, Heroku handles the rest. Great for MVPs and small teams who don't want to manage infrastructure.",
+  "category": "fullstack",
+  "complexity": "starter",
+  "flow": "GitHub (Source) \u2192 Heroku (Build + Deploy) \u2192 Heroku Addons (Database + Cache)",
+  "steps": [
+    {
+      "id": "deploy",
+      "platform": "heroku",
+      "role": "deploy",
+      "label": "Heroku App",
+      "depends_on": [],
+      "shared_vars": [
+        {
+          "key": "DATABASE_URL",
+          "description": "Heroku Postgres (auto-set by addon)",
+          "required": true,
+          "suggested_backend": "heroku-config",
+          "suggested_path": "DATABASE_URL"
+        },
+        {
+          "key": "REDIS_URL",
+          "description": "Heroku Redis (auto-set by addon)",
+          "required": true,
+          "suggested_backend": "heroku-config",
+          "suggested_path": "REDIS_URL"
+        },
+        {
+          "key": "SECRET_KEY_BASE",
+          "description": "Application encryption key",
+          "required": true,
+          "suggested_backend": "heroku-config",
+          "suggested_path": "SECRET_KEY_BASE"
+        },
+        {
+          "key": "SENDGRID_API_KEY",
+          "description": "Email via SendGrid addon",
+          "required": false,
+          "suggested_backend": "heroku-config",
+          "suggested_path": "SENDGRID_API_KEY"
+        },
+        {
+          "key": "PAPERTRAIL_API_TOKEN",
+          "description": "Log aggregation",
+          "required": false,
+          "suggested_backend": "heroku-config",
+          "suggested_path": "PAPERTRAIL_API_TOKEN"
+        },
+        {
+          "key": "NEW_RELIC_LICENSE_KEY",
+          "description": "APM monitoring",
+          "required": false,
+          "suggested_backend": "heroku-config",
+          "suggested_path": "NEW_RELIC_LICENSE_KEY"
+        }
+      ],
+      "notes": "Heroku auto-sets DATABASE_URL and REDIS_URL when addons are attached. Use 'heroku config:set' for the rest."
+    },
+    {
+      "id": "ci",
+      "platform": "github-actions",
+      "role": "ci",
+      "label": "CI (Tests + Lint)",
+      "depends_on": [],
+      "shared_vars": [
+        {
+          "key": "HEROKU_API_KEY",
+          "description": "Heroku deploy API key",
+          "required": true,
+          "suggested_backend": "github-secrets",
+          "suggested_path": "HEROKU_API_KEY"
+        },
+        {
+          "key": "HEROKU_APP_NAME",
+          "description": "Target Heroku app",
+          "required": true,
+          "suggested_backend": "github-secrets",
+          "suggested_path": "HEROKU_APP_NAME"
+        }
+      ],
+      "notes": "Run tests in CI, then deploy to Heroku via API or git push. Heroku Pipelines for staging \u2192 production promotion."
+    }
+  ],
+  "notes": "Lowest-friction path to production. Heroku addons handle database, cache, email, monitoring. Trade control for speed. 32 KB config var limit."
+}

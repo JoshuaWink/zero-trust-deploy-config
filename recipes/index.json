@@ -1,0 +1,13 @@
+{
+  "version": "0.1.0",
+  "recipes": [
+    "ecs-pipeline",
+    "edge-first-cloudflare",
+    "fullstack-k8s",
+    "gcp-cloud-native",
+    "gitlab-docker-compose",
+    "jamstack-vercel",
+    "paas-heroku",
+    "serverless-aws"
+  ]
+}

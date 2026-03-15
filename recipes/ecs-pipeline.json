@@ -1,0 +1,146 @@
+{
+  "id": "ecs-pipeline",
+  "name": "AWS ECS Fargate Pipeline",
+  "description": "Containerized workloads on AWS ECS Fargate. No servers to manage \u2014 just define your task and AWS handles scheduling, scaling, and networking.",
+  "category": "api",
+  "complexity": "intermediate",
+  "flow": "GitHub Actions (CI) \u2192 Docker (Build) \u2192 ECR (Registry) \u2192 ECS Fargate (Deploy) \u2192 Terraform (IaC)",
+  "steps": [
+    {
+      "id": "ci",
+      "platform": "github-actions",
+      "role": "ci",
+      "label": "Build + Push to ECR",
+      "depends_on": [],
+      "shared_vars": [
+        {
+          "key": "AWS_ACCESS_KEY_ID",
+          "description": "AWS credentials for ECR push",
+          "required": true,
+          "suggested_backend": "github-secrets",
+          "suggested_path": "AWS_ACCESS_KEY_ID"
+        },
+        {
+          "key": "AWS_SECRET_ACCESS_KEY",
+          "description": "AWS secret key",
+          "required": true,
+          "suggested_backend": "github-secrets",
+          "suggested_path": "AWS_SECRET_ACCESS_KEY"
+        },
+        {
+          "key": "AWS_REGION",
+          "description": "ECR/ECS region",
+          "required": true,
+          "suggested_backend": "github-secrets",
+          "suggested_path": "AWS_REGION"
+        },
+        {
+          "key": "ECR_REPOSITORY",
+          "description": "ECR repo URI",
+          "required": true,
+          "suggested_backend": "github-secrets",
+          "suggested_path": "ECR_REPOSITORY"
+        }
+      ],
+      "notes": "Prefer OIDC federation over static AWS keys. Build, tag with git SHA, push to ECR, update task definition."
+    },
+    {
+      "id": "build",
+      "platform": "docker",
+      "role": "build",
+      "label": "Container Image",
+      "depends_on": [
+        "ci"
+      ],
+      "shared_vars": [
+        {
+          "key": "NODE_ENV",
+          "description": "Build environment",
+          "required": false,
+          "suggested_backend": "env-file",
+          "suggested_path": "NODE_ENV"
+        }
+      ],
+      "notes": "Multi-stage build recommended. Runtime secrets come from ECS task definition, not baked into image."
+    },
+    {
+      "id": "deploy",
+      "platform": "aws-ecs",
+      "role": "deploy",
+      "label": "ECS Fargate Service",
+      "depends_on": [
+        "build"
+      ],
+      "shared_vars": [
+        {
+          "key": "DATABASE_URL",
+          "description": "RDS connection string",
+          "required": true,
+          "suggested_backend": "aws-secrets-manager",
+          "suggested_path": "prod/db-url"
+        },
+        {
+          "key": "REDIS_URL",
+          "description": "ElastiCache endpoint",
+          "required": true,
+          "suggested_backend": "aws-ssm",
+          "suggested_path": "/prod/redis-url"
+        },
+        {
+          "key": "API_KEY",
+          "description": "External service API key",
+          "required": true,
+          "suggested_backend": "aws-secrets-manager",
+          "suggested_path": "prod/api-key"
+        },
+        {
+          "key": "LOG_LEVEL",
+          "description": "CloudWatch log level",
+          "required": false,
+          "suggested_backend": "aws-ssm",
+          "suggested_path": "/prod/log-level"
+        },
+        {
+          "key": "DD_API_KEY",
+          "description": "Datadog monitoring key",
+          "required": false,
+          "suggested_backend": "aws-secrets-manager",
+          "suggested_path": "prod/datadog"
+        }
+      ],
+      "notes": "ECS distinguishes 'environment' (plaintext) from 'secrets' (SSM/Secrets Manager refs). Task definition JSON captures both."
+    },
+    {
+      "id": "iac",
+      "platform": "terraform",
+      "role": "iac",
+      "label": "Infrastructure (Terraform)",
+      "depends_on": [],
+      "shared_vars": [
+        {
+          "key": "TF_VAR_cluster_name",
+          "description": "ECS cluster name",
+          "required": true,
+          "suggested_backend": "env-file",
+          "suggested_path": "TF_VAR_cluster_name"
+        },
+        {
+          "key": "TF_VAR_vpc_id",
+          "description": "Target VPC",
+          "required": true,
+          "suggested_backend": "env-file",
+          "suggested_path": "TF_VAR_vpc_id"
+        },
+        {
+          "key": "TF_VAR_desired_count",
+          "description": "Service replica count",
+          "required": false,
+          "suggested_backend": "env-file",
+          "suggested_path": "TF_VAR_desired_count"
+        }
+      ],
+      "notes": "Provisions ECS cluster, ALB, security groups, IAM roles, ECR repo. State in S3."
+    }
+  ],
+  "notes": "AWS-native container orchestration without K8s complexity. Fargate means no EC2 instances to manage. Good balance of control and simplicity."
+}

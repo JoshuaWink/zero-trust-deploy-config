@@ -1,0 +1,63 @@
+{
+  "id": "jamstack-vercel",
+  "name": "JAMstack on Vercel",
+  "description": "Modern frontend stack: Next.js on Vercel with serverless API routes, connected to a managed database and email service.",
+  "category": "frontend",
+  "complexity": "starter",
+  "flow": "GitHub (Source) \u2192 Vercel (Build + Deploy) \u2192 Vercel Secrets (Config)",
+  "steps": [
+    {
+      "id": "deploy",
+      "platform": "vercel",
+      "role": "deploy",
+      "label": "Vercel Deployment",
+      "depends_on": [],
+      "shared_vars": [
+        {
+          "key": "NEXT_PUBLIC_API_URL",
+          "description": "Public API endpoint",
+          "required": true,
+          "suggested_backend": "vercel-secrets",
+          "suggested_path": "api-url"
+        },
+        {
+          "key": "NEXT_PUBLIC_STRIPE_PK",
+          "description": "Stripe publishable key (client-side)",
+          "required": true,
+          "suggested_backend": "vercel-secrets",
+          "suggested_path": "stripe-pk"
+        },
+        {
+          "key": "DATABASE_URL",
+          "description": "Managed Postgres (Neon/PlanetScale)",
+          "required": true,
+          "suggested_backend": "vercel-secrets",
+          "suggested_path": "database-url"
+        },
+        {
+          "key": "AUTH_SECRET",
+          "description": "NextAuth.js encryption secret",
+          "required": true,
+          "suggested_backend": "vercel-secrets",
+          "suggested_path": "auth-secret"
+        },
+        {
+          "key": "RESEND_API_KEY",
+          "description": "Transactional email",
+          "required": false,
+          "suggested_backend": "vercel-secrets",
+          "suggested_path": "resend-key"
+        },
+        {
+          "key": "NEXT_PUBLIC_GA_ID",
+          "description": "Google Analytics ID",
+          "required": false,
+          "suggested_backend": "vercel-secrets",
+          "suggested_path": "ga-id"
+        }
+      ],
+      "notes": "Vercel auto-deploys from GitHub. NEXT_PUBLIC_ vars are bundled into client JS \u2014 never put secrets there."
+    }
+  ],
+  "notes": "Simplest production stack. One platform handles build, deploy, CDN, and SSL. Add database via Vercel Postgres or external (Neon, Supabase, PlanetScale)."
+}

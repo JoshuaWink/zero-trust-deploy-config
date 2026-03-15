@@ -1,0 +1,75 @@
+{
+  "id": "edge-first-cloudflare",
+  "name": "Edge-First (Cloudflare Workers)",
+  "description": "Deploy at the edge with Cloudflare Workers. Sub-millisecond cold starts, global distribution, with KV storage and D1 database.",
+  "category": "edge",
+  "complexity": "intermediate",
+  "flow": "GitHub Actions (CI) \u2192 Wrangler (Build + Deploy) \u2192 Workers (Edge Runtime)",
+  "steps": [
+    {
+      "id": "ci",
+      "platform": "github-actions",
+      "role": "ci",
+      "label": "CI + Deploy via Wrangler",
+      "depends_on": [],
+      "shared_vars": [
+        {
+          "key": "CLOUDFLARE_API_TOKEN",
+          "description": "Wrangler deploy token",
+          "required": true,
+          "suggested_backend": "github-secrets",
+          "suggested_path": "CLOUDFLARE_API_TOKEN"
+        },
+        {
+          "key": "CLOUDFLARE_ACCOUNT_ID",
+          "description": "CF account identifier",
+          "required": true,
+          "suggested_backend": "github-secrets",
+          "suggested_path": "CLOUDFLARE_ACCOUNT_ID"
+        }
+      ],
+      "notes": "Uses 'wrangler deploy' in CI. Token needs Workers Scripts:Edit permission."
+    },
+    {
+      "id": "worker",
+      "platform": "cloudflare-workers",
+      "role": "deploy",
+      "label": "Edge Worker",
+      "depends_on": [
+        "ci"
+      ],
+      "shared_vars": [
+        {
+          "key": "API_TOKEN",
+          "description": "Upstream API authentication",
+          "required": true,
+          "suggested_backend": "cloudflare-secrets",
+          "suggested_path": "API_TOKEN"
+        },
+        {
+          "key": "KV_NAMESPACE_ID",
+          "description": "Workers KV binding",
+          "required": true,
+          "suggested_backend": "cloudflare-secrets",
+          "suggested_path": "KV_NAMESPACE_ID"
+        },
+        {
+          "key": "D1_DATABASE_ID",
+          "description": "D1 SQLite database binding",
+          "required": false,
+          "suggested_backend": "cloudflare-secrets",
+          "suggested_path": "D1_DATABASE_ID"
+        },
+        {
+          "key": "ENVIRONMENT",
+          "description": "Runtime environment flag",
+          "required": false,
+          "suggested_backend": "cloudflare-secrets",
+          "suggested_path": "ENVIRONMENT"
+        }
+      ],
+      "notes": "Vars go in wrangler.toml [vars]. Secrets via 'wrangler secret put'. KV/D1/R2 are bindings, not env vars."
+    }
+  ],
+  "notes": "Best for API gateways, auth middleware, content transformation, and low-latency global APIs. 128 KB total script+vars limit on free tier."
+}

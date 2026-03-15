@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Deployment Recipe",
+  "description": "A multi-platform deployment stack. Recipes compose platform contracts into a complete deployment pipeline \u2014 from build to deploy to monitor.",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "description",
+    "category",
+    "steps"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Unique kebab-case identifier"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable recipe name"
+    },
+    "description": {
+      "type": "string",
+      "description": "What this stack does and when to use it"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "fullstack",
+        "api",
+        "frontend",
+        "data-pipeline",
+        "edge",
+        "microservices"
+      ],
+      "description": "Recipe category"
+    },
+    "complexity": {
+      "type": "string",
+      "enum": [
+        "starter",
+        "intermediate",
+        "advanced"
+      ],
+      "description": "Complexity level for the DevOps user"
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "platform",
+          "role"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Step identifier (unique within recipe)"
+          },
+          "platform": {
+            "type": "string",
+            "description": "Contract ID reference (e.g. 'kubernetes', 'github-actions')"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "build",
+              "ci",
+              "deploy",
+              "secrets",
+              "routing",
+              "monitoring",
+              "storage",
+              "iac",
+              "cdn"
+            ],
+            "description": "What role this step plays in the pipeline"
+          },
+          "label": {
+            "type": "string",
+            "description": "Human label for this step (e.g. 'Build & Push Image')"
+          },
+          "depends_on": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Step IDs this step depends on (execution order)"
+          },
+          "shared_vars": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "key",
+                "description"
+              ],
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "required": {
+                  "type": "boolean"
+                },
+                "suggested_backend": {
+                  "type": "string"
+                },
+                "suggested_path": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Env vars this step needs, with suggested secret backends"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Step-specific guidance"
+          }
+        }
+      },
+      "description": "Ordered steps in the deployment pipeline"
+    },
+    "flow": {
+      "type": "string",
+      "description": "ASCII or text representation of the pipeline flow (e.g. 'CI \u2192 Build \u2192 Deploy \u2192 Route')"
+    },
+    "notes": {
+      "type": "string",
+      "description": "General recipe notes"
+    }
+  }
+}

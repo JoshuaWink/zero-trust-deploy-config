@@ -1,0 +1,89 @@
+{
+  "id": "gitlab-docker-compose",
+  "name": "GitLab CI + Docker Compose",
+  "description": "Self-hosted or GitLab.com CI pipeline deploying a multi-container app via Docker Compose. Great for small-to-medium teams with a VPS or dedicated server.",
+  "category": "fullstack",
+  "complexity": "starter",
+  "flow": "GitLab CI (Build + Test) \u2192 Docker Compose (Deploy) \u2192 Server (Runtime)",
+  "steps": [
+    {
+      "id": "ci",
+      "platform": "gitlab-ci",
+      "role": "ci",
+      "label": "GitLab CI Pipeline",
+      "depends_on": [],
+      "shared_vars": [
+        {
+          "key": "DEPLOY_HOST",
+          "description": "SSH host for deployment target",
+          "required": true,
+          "suggested_backend": "gitlab-variables",
+          "suggested_path": "DEPLOY_HOST"
+        },
+        {
+          "key": "DEPLOY_KEY",
+          "description": "SSH private key for deploy",
+          "required": true,
+          "suggested_backend": "gitlab-variables",
+          "suggested_path": "DEPLOY_KEY"
+        },
+        {
+          "key": "REGISTRY_PASSWORD",
+          "description": "Container registry token",
+          "required": true,
+          "suggested_backend": "gitlab-variables",
+          "suggested_path": "REGISTRY_PASSWORD"
+        }
+      ],
+      "notes": "GitLab CI uses .gitlab-ci.yml. Variables set in Settings \u2192 CI/CD \u2192 Variables. Mark sensitive vars as 'masked' and 'protected'."
+    },
+    {
+      "id": "deploy",
+      "platform": "docker-compose",
+      "role": "deploy",
+      "label": "Docker Compose Stack",
+      "depends_on": [
+        "ci"
+      ],
+      "shared_vars": [
+        {
+          "key": "DATABASE_URL",
+          "description": "Postgres connection",
+          "required": true,
+          "suggested_backend": "env-file",
+          "suggested_path": "DATABASE_URL"
+        },
+        {
+          "key": "REDIS_URL",
+          "description": "Redis connection",
+          "required": true,
+          "suggested_backend": "env-file",
+          "suggested_path": "REDIS_URL"
+        },
+        {
+          "key": "SECRET_KEY",
+          "description": "Application secret",
+          "required": true,
+          "suggested_backend": "env-file",
+          "suggested_path": "SECRET_KEY"
+        },
+        {
+          "key": "SMTP_PASSWORD",
+          "description": "Email SMTP credentials",
+          "required": false,
+          "suggested_backend": "env-file",
+          "suggested_path": "SMTP_PASSWORD"
+        },
+        {
+          "key": "BACKUP_S3_KEY",
+          "description": "S3 key for database backups",
+          "required": false,
+          "suggested_backend": "env-file",
+          "suggested_path": "BACKUP_S3_KEY"
+        }
+      ],
+      "notes": "Deploy via 'docker compose up -d' on the target server. Use .env file for secrets \u2014 never commit it. Consider Docker secrets for swarm mode."
+    }
+  ],
+  "notes": "The pragmatic choice for teams not ready for K8s. Docker Compose on a VPS handles surprising scale. GitLab's built-in registry keeps everything in one place."
+}

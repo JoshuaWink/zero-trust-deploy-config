@@ -1,0 +1,113 @@
+{
+  "id": "serverless-aws",
+  "name": "Serverless AWS (Lambda + API Gateway)",
+  "description": "Event-driven serverless stack on AWS. Lambda functions behind API Gateway, with DynamoDB or RDS, managed via Terraform or SAM.",
+  "category": "api",
+  "complexity": "intermediate",
+  "flow": "GitHub Actions (CI) \u2192 Lambda (Deploy) \u2192 Terraform (IaC) \u2192 SSM (Secrets)",
+  "steps": [
+    {
+      "id": "ci",
+      "platform": "github-actions",
+      "role": "ci",
+      "label": "CI / Deploy Pipeline",
+      "depends_on": [],
+      "shared_vars": [
+        {
+          "key": "AWS_ACCESS_KEY_ID",
+          "description": "AWS deploy credentials",
+          "required": true,
+          "suggested_backend": "github-secrets",
+          "suggested_path": "AWS_ACCESS_KEY_ID"
+        },
+        {
+          "key": "AWS_SECRET_ACCESS_KEY",
+          "description": "AWS deploy secret",
+          "required": true,
+          "suggested_backend": "github-secrets",
+          "suggested_path": "AWS_SECRET_ACCESS_KEY"
+        },
+        {
+          "key": "AWS_REGION",
+          "description": "Target AWS region",
+          "required": true,
+          "suggested_backend": "github-secrets",
+          "suggested_path": "AWS_REGION"
+        }
+      ],
+      "notes": "Uses SAM CLI or Serverless Framework to package and deploy. OIDC federation preferred over static keys."
+    },
+    {
+      "id": "lambda",
+      "platform": "aws-lambda",
+      "role": "deploy",
+      "label": "Lambda Functions",
+      "depends_on": [
+        "ci"
+      ],
+      "shared_vars": [
+        {
+          "key": "DATABASE_URL",
+          "description": "RDS or DynamoDB connection",
+          "required": true,
+          "suggested_backend": "aws-ssm",
+          "suggested_path": "/prod/db-url"
+        },
+        {
+          "key": "STRIPE_SECRET_KEY",
+          "description": "Payment processing key",
+          "required": true,
+          "suggested_backend": "aws-secrets-manager",
+          "suggested_path": "prod/stripe"
+        },
+        {
+          "key": "JWT_SECRET",
+          "description": "JWT signing key",
+          "required": true,
+          "suggested_backend": "aws-ssm",
+          "suggested_path": "/prod/jwt-secret"
+        },
+        {
+          "key": "LOG_LEVEL",
+          "description": "CloudWatch log level",
+          "required": false,
+          "suggested_backend": "aws-ssm",
+          "suggested_path": "/prod/log-level"
+        }
+      ],
+      "notes": "Remember Lambda's 4 KB total env var limit. Use SSM/Secrets Manager for large configs. Cold start optimization matters."
+    },
+    {
+      "id": "iac",
+      "platform": "terraform",
+      "role": "iac",
+      "label": "Infrastructure (Terraform)",
+      "depends_on": [],
+      "shared_vars": [
+        {
+          "key": "TF_VAR_function_name",
+          "description": "Lambda function name",
+          "required": true,
+          "suggested_backend": "env-file",
+          "suggested_path": "TF_VAR_function_name"
+        },
+        {
+          "key": "TF_VAR_api_stage",
+          "description": "API Gateway stage name",
+          "required": true,
+          "suggested_backend": "env-file",
+          "suggested_path": "TF_VAR_api_stage"
+        },
+        {
+          "key": "TF_VAR_domain",
+          "description": "Custom domain for API",
+          "required": false,
+          "suggested_backend": "env-file",
+          "suggested_path": "TF_VAR_domain"
+        }
+      ],
+      "notes": "Provisions Lambda, API Gateway, IAM roles, CloudWatch. State in S3 + DynamoDB lock."
+    }
+  ],
+  "notes": "Great for event-driven APIs, webhooks, and scheduled tasks. Pay-per-invocation keeps costs low. Watch the 4 KB env var limit on Lambda."
+}

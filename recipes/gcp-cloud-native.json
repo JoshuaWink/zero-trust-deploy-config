@@ -1,0 +1,120 @@
+{
+  "id": "gcp-cloud-native",
+  "name": "GCP Cloud-Native Stack",
+  "description": "Google Cloud Run for compute, Cloud SQL for database, Secret Manager for secrets, Cloud Build for CI. Fully managed, scales to zero.",
+  "category": "api",
+  "complexity": "intermediate",
+  "flow": "Cloud Build (CI) \u2192 Docker (Build) \u2192 Cloud Run (Deploy) \u2192 Secret Manager (Secrets)",
+  "steps": [
+    {
+      "id": "ci",
+      "platform": "github-actions",
+      "role": "ci",
+      "label": "CI + Trigger Cloud Build",
+      "depends_on": [],
+      "shared_vars": [
+        {
+          "key": "GCP_PROJECT_ID",
+          "description": "Google Cloud project",
+          "required": true,
+          "suggested_backend": "github-secrets",
+          "suggested_path": "GCP_PROJECT_ID"
+        },
+        {
+          "key": "GCP_SA_KEY",
+          "description": "Service account key (JSON)",
+          "required": true,
+          "suggested_backend": "github-secrets",
+          "suggested_path": "GCP_SA_KEY"
+        },
+        {
+          "key": "GCP_REGION",
+          "description": "Deploy region",
+          "required": true,
+          "suggested_backend": "github-secrets",
+          "suggested_path": "GCP_REGION"
+        }
+      ],
+      "notes": "Prefer Workload Identity Federation over service account keys. Push to Artifact Registry, deploy to Cloud Run."
+    },
+    {
+      "id": "deploy",
+      "platform": "google-cloud-run",
+      "role": "deploy",
+      "label": "Cloud Run Service",
+      "depends_on": [
+        "ci"
+      ],
+      "shared_vars": [
+        {
+          "key": "DATABASE_URL",
+          "description": "Cloud SQL Postgres connection",
+          "required": true,
+          "suggested_backend": "gcp-secret-manager",
+          "suggested_path": "projects/myproj/secrets/db-url/versions/latest"
+        },
+        {
+          "key": "REDIS_HOST",
+          "description": "Memorystore Redis",
+          "required": true,
+          "suggested_backend": "gcp-secret-manager",
+          "suggested_path": "projects/myproj/secrets/redis/versions/latest"
+        },
+        {
+          "key": "JWT_SECRET",
+          "description": "JWT signing key",
+          "required": true,
+          "suggested_backend": "gcp-secret-manager",
+          "suggested_path": "projects/myproj/secrets/jwt/versions/latest"
+        },
+        {
+          "key": "GCS_BUCKET",
+          "description": "Cloud Storage bucket",
+          "required": false,
+          "suggested_backend": "gcp-secret-manager",
+          "suggested_path": "projects/myproj/secrets/gcs/versions/latest"
+        },
+        {
+          "key": "LOG_LEVEL",
+          "description": "Application log level",
+          "required": false,
+          "suggested_backend": "gcp-secret-manager",
+          "suggested_path": "projects/myproj/secrets/log-level/versions/latest"
+        }
+      ],
+      "notes": "Cloud Run mounts secrets directly from Secret Manager as env vars or files. Scales to zero \u2014 pay only for requests."
+    },
+    {
+      "id": "iac",
+      "platform": "terraform",
+      "role": "iac",
+      "label": "Infrastructure (Terraform)",
+      "depends_on": [],
+      "shared_vars": [
+        {
+          "key": "TF_VAR_project_id",
+          "description": "GCP project ID",
+          "required": true,
+          "suggested_backend": "env-file",
+          "suggested_path": "TF_VAR_project_id"
+        },
+        {
+          "key": "TF_VAR_region",
+          "description": "GCP region",
+          "required": true,
+          "suggested_backend": "env-file",
+          "suggested_path": "TF_VAR_region"
+        },
+        {
+          "key": "TF_VAR_sql_tier",
+          "description": "Cloud SQL instance tier",
+          "required": false,
+          "suggested_backend": "env-file",
+          "suggested_path": "TF_VAR_sql_tier"
+        }
+      ],
+      "notes": "Provisions Cloud Run service, Cloud SQL, VPC connector, Artifact Registry, IAM. State in GCS bucket."
+    }
+  ],
+  "notes": "Google's managed stack. Cloud Run scales to zero for cost efficiency. Cloud SQL for relational data. Secret Manager for all secrets with versioning and rotation."
+}

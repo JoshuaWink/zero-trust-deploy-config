@@ -1,0 +1,160 @@
+{
+  "id": "fullstack-k8s",
+  "name": "Full-Stack Kubernetes",
+  "description": "Production-grade K8s deployment with CI/CD, secret management, and container registry. The classic cloud-native stack for teams running their own infrastructure.",
+  "category": "fullstack",
+  "complexity": "advanced",
+  "flow": "GitHub Actions (CI) \u2192 Docker (Build) \u2192 Kubernetes (Deploy) \u2192 Vault (Secrets)",
+  "steps": [
+    {
+      "id": "ci",
+      "platform": "github-actions",
+      "role": "ci",
+      "label": "CI Pipeline",
+      "depends_on": [],
+      "shared_vars": [
+        {
+          "key": "REGISTRY_URL",
+          "description": "Container registry URL",
+          "required": true,
+          "suggested_backend": "github-secrets",
+          "suggested_path": "REGISTRY_URL"
+        },
+        {
+          "key": "REGISTRY_USERNAME",
+          "description": "Registry auth user",
+          "required": true,
+          "suggested_backend": "github-secrets",
+          "suggested_path": "REGISTRY_USERNAME"
+        },
+        {
+          "key": "REGISTRY_PASSWORD",
+          "description": "Registry auth token",
+          "required": true,
+          "suggested_backend": "github-secrets",
+          "suggested_path": "REGISTRY_PASSWORD"
+        },
+        {
+          "key": "KUBE_CONFIG",
+          "description": "Base64-encoded kubeconfig for deploy step",
+          "required": true,
+          "suggested_backend": "github-secrets",
+          "suggested_path": "KUBE_CONFIG"
+        }
+      ],
+      "notes": "Runs on push to main. Builds image, pushes to registry, applies K8s manifests."
+    },
+    {
+      "id": "build",
+      "platform": "docker",
+      "role": "build",
+      "label": "Container Image",
+      "depends_on": [
+        "ci"
+      ],
+      "shared_vars": [
+        {
+          "key": "NODE_ENV",
+          "description": "Build-time environment",
+          "required": false,
+          "suggested_backend": "env-file",
+          "suggested_path": "NODE_ENV"
+        },
+        {
+          "key": "BUILD_VERSION",
+          "description": "Image tag / version",
+          "required": false,
+          "suggested_backend": "env-file",
+          "suggested_path": "BUILD_VERSION"
+        }
+      ],
+      "notes": "Multi-stage Dockerfile. Build args set at CI time, runtime env vars injected by K8s."
+    },
+    {
+      "id": "deploy",
+      "platform": "kubernetes",
+      "role": "deploy",
+      "label": "K8s Deployment",
+      "depends_on": [
+        "build"
+      ],
+      "shared_vars": [
+        {
+          "key": "DATABASE_URL",
+          "description": "Primary database connection",
+          "required": true,
+          "suggested_backend": "hashicorp-vault",
+          "suggested_path": "secret/prod/db-url"
+        },
+        {
+          "key": "REDIS_URL",
+          "description": "Cache connection",
+          "required": true,
+          "suggested_backend": "hashicorp-vault",
+          "suggested_path": "secret/prod/redis-url"
+        },
+        {
+          "key": "JWT_SECRET",
+          "description": "JWT signing key",
+          "required": true,
+          "suggested_backend": "hashicorp-vault",
+          "suggested_path": "secret/prod/jwt"
+        },
+        {
+          "key": "API_KEY",
+          "description": "External API key",
+          "required": true,
+          "suggested_backend": "k8s-secret",
+          "suggested_path": "app-secrets/api-key"
+        },
+        {
+          "key": "LOG_LEVEL",
+          "description": "Application log verbosity",
+          "required": false,
+          "suggested_backend": "k8s-secret",
+          "suggested_path": "app-config/log-level"
+        },
+        {
+          "key": "CORS_ORIGINS",
+          "description": "Allowed CORS origins",
+          "required": false,
+          "suggested_backend": "k8s-secret",
+          "suggested_path": "app-config/cors"
+        }
+      ],
+      "notes": "Deployment + Service + Ingress. ConfigMap for non-sensitive, Secret for sensitive. Consider Vault Agent sidecar for dynamic secrets."
+    },
+    {
+      "id": "secrets",
+      "platform": "terraform",
+      "role": "iac",
+      "label": "Infrastructure (Terraform)",
+      "depends_on": [],
+      "shared_vars": [
+        {
+          "key": "TF_VAR_cluster_name",
+          "description": "K8s cluster name",
+          "required": true,
+          "suggested_backend": "env-file",
+          "suggested_path": "TF_VAR_cluster_name"
+        },
+        {
+          "key": "TF_VAR_region",
+          "description": "Cloud region",
+          "required": true,
+          "suggested_backend": "env-file",
+          "suggested_path": "TF_VAR_region"
+        },
+        {
+          "key": "TF_VAR_node_count",
+          "description": "Worker node count",
+          "required": false,
+          "suggested_backend": "env-file",
+          "suggested_path": "TF_VAR_node_count"
+        }
+      ],
+      "notes": "Provisions the K8s cluster, VPC, and supporting infra. State stored in remote backend (S3/GCS)."
+    }
+  ],
+  "notes": "The gold standard for teams who need full control. Requires K8s expertise. Consider managed K8s (EKS/GKE/AKS) to reduce ops burden."
+}
