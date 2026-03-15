@@ -262,8 +262,18 @@
   .security-method-tabs button { flex:1; padding:8px 12px; border:none; background:var(--bg); color:var(--muted); cursor:pointer; font-size:12px; font-weight:500; transition:all 0.2s; }
   .security-method-tabs button.active { background:var(--accent); color:#fff; }
   .security-method-tabs button:hover:not(.active) { background:#1f6feb10; }
+  .device-code-box { background:var(--bg); border:2px dashed var(--accent); border-radius:12px; padding:16px; text-align:center; margin:12px 0; }
+  .device-code-box .code { font-size:28px; font-weight:700; font-family:var(--mono); letter-spacing:4px; color:var(--accent); margin:8px 0; user-select:all; }
+  .device-code-box .steps { font-size:11px; color:var(--muted); text-align:left; padding-left:16px; }
+  .device-code-box .steps li { margin:4px 0; }
+  .device-poll { display:flex; align-items:center; gap:8px; justify-content:center; margin-top:8px; font-size:12px; color:var(--muted); }
+  .device-poll .spinner-sm { display:inline-block; width:14px; height:14px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; }
+
 
 </style>
+<!-- OAuth provider libraries (loaded async, only used if configured) -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js" async defer></script>
 </head>
 <body>
 
@@ -2519,12 +2529,12 @@ function showSecurityModal(mode) {
           <button class="oauth-btn" onclick="startOAuthFlow('github')" id="oauth-github-btn">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
             <span class="provider-name">Continue with GitHub</span>
-            <span class="status-tag" style="background:var(--success); color:#000;">ready</span>
+            <span class="status-tag" id="gh-status-tag" style="background:var(--success); color:#000;">ready</span>
           </button>
           <button class="oauth-btn" onclick="startOAuthFlow('google')" id="oauth-google-btn">
             <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
             <span class="provider-name">Continue with Google</span>
-            <span class="status-tag" style="background:var(--warn,#d29920); color:#000;">config needed</span>
+            <span class="status-tag" id="google-status-tag" style="background:var(--warn,#d29920); color:#000;">config needed</span>
           </button>
           <button class="oauth-btn" onclick="startOAuthFlow('microsoft')" id="oauth-microsoft-btn">
             <svg viewBox="0 0 24 24"><rect x="1" y="1" width="10" height="10" fill="#F25022"/><rect x="13" y="1" width="10" height="10" fill="#7FBA00"/><rect x="1" y="13" width="10" height="10" fill="#00A4EF"/><rect x="13" y="13" width="10" height="10" fill="#FFB900"/></svg>
@@ -2735,31 +2745,74 @@ function updateSecurityBar(encrypted) {
 
 // OAuth client configs — GitHub works immediately with PAT flow
 // Google and Microsoft need registered OAuth client_ids
+// ═══════════════════════════════════════════════════════════════
+// OAUTH CONFIGURATION
+// ═══════════════════════════════════════════════════════════════
+//
+// To enable each provider, register an OAuth app and fill in the clientId.
+// See: https://joshuawink.github.io/zero-trust-deploy-config/#setup
+//
+// GitHub:    github.com/settings/developers → OAuth App
+//            Callback URL: https://joshuawink.github.io/zero-trust-deploy-config/callback.html
+//
+// Google:    console.cloud.google.com → APIs & Services → Credentials → OAuth Client
+//            Authorized JS origins: https://joshuawink.github.io
+//
+// Microsoft: portal.azure.com → App registrations → New → SPA redirect URI
+//            Redirect URI: https://joshuawink.github.io/zero-trust-deploy-config/callback.html
+
 const OAUTH_CONFIG = {
   github: {
-    // GitHub: uses PAT-based identity (no OAuth app registration needed for GH Pages)
-    // The user's GitHub user ID is a stable, unique identifier
-    ready: true,
+    clientId: "",           // OAuth App Client ID (NOT the secret)
+    deviceFlowClientId: "", // Same Client ID — Device Flow uses it too
+    // GitHub requires client_secret for code exchange, so we use Device Flow
+    // for zero-backend auth. Set clientId to enable.
     label: "GitHub",
+    get ready() { return !!(this.clientId || this.deviceFlowClientId); },
   },
   google: {
-    // Google: needs a GIS client_id registered at console.cloud.google.com
-    clientId: "",  // Set this to enable: "xxxx.apps.googleusercontent.com"
-    ready: false,
+    clientId: "",  // e.g. "123456789.apps.googleusercontent.com"
     label: "Google",
+    get ready() { return !!this.clientId; },
   },
   microsoft: {
-    // Microsoft: needs an MSAL client_id registered at portal.azure.com
-    clientId: "",  // Set this to enable
-    tenantId: "common",
-    ready: false,
+    clientId: "",  // e.g. "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    tenantId: "common",  // "common" for multi-tenant, or specific tenant
     label: "Microsoft",
+    get ready() { return !!this.clientId; },
   },
 };
 
+const CALLBACK_URL = new URL("callback.html", window.location.href).href;
+
+// ═══════════════════════════════════════════════════════════════
+// PKCE HELPERS — Pure Web Crypto
+// ═══════════════════════════════════════════════════════════════
+
+function base64url(buffer) {
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function generateCodeVerifier() {
+  return base64url(crypto.getRandomValues(new Uint8Array(32)));
+}
+
+async function generateCodeChallenge(verifier) {
+  const encoded = new TextEncoder().encode(verifier);
+  const hash = await crypto.subtle.digest("SHA-256", encoded);
+  return base64url(hash);
+}
+
+function generateState() {
+  return base64url(crypto.getRandomValues(new Uint8Array(16)));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// KEY DERIVATION — provider + sub → AES-256 key
+// ═══════════════════════════════════════════════════════════════
+
 async function deriveKeyFromOAuth(provider, sub) {
-  // Mirrors Python's derive_encryption_key_from_oauth
-  // provider+sub → deterministic AES-256 key via PBKDF2
   const enc = new TextEncoder();
   const salt = enc.encode(`ztdc-oauth-v1:${provider}`);
   const keyMaterial = await crypto.subtle.importKey(
@@ -2774,74 +2827,252 @@ async function deriveKeyFromOAuth(provider, sub) {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════
+// SHARED OAUTH COMPLETION — after getting provider + sub
+// ═══════════════════════════════════════════════════════════════
+
+async function completeOAuthEncryption(provider, sub, displayInfo) {
+  _sessionKey = await deriveKeyFromOAuth(provider, sub);
+  _encryptionEnabled = true;
+
+  // Migrate existing plaintext data
+  const existingProfiles = localStorage.getItem(STORAGE_KEY);
+  const existingRecipes = localStorage.getItem(CUSTOM_RECIPES_KEY);
+
+  if (existingProfiles && !existingProfiles.startsWith(ENCRYPTED_PREFIX)) {
+    try { profiles = JSON.parse(existingProfiles); await saveProfilesSecure(); } catch {}
+  }
+  if (existingRecipes && !existingRecipes.startsWith(ENCRYPTED_PREFIX)) {
+    try { customRecipes = JSON.parse(existingRecipes); await saveCustomRecipesSecure(); } catch {}
+  }
+
+  localStorage.setItem("ztdc_encrypted", "true");
+  localStorage.setItem("ztdc_auth_method", provider);
+  localStorage.setItem("ztdc_auth_display", JSON.stringify(displayInfo));
+  localStorage.setItem("ztdc_enc_check", await encryptData({check: true}, _sessionKey));
+
+  enableEncryptedStorage();
+  updateSecurityBar(true, provider, displayInfo);
+  closeSecurityModal();
+
+  await loadProfilesSecure();
+  await loadCustomRecipesSecure();
+  refreshAll();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GITHUB — Device Flow (no backend needed!)
+// ═══════════════════════════════════════════════════════════════
+//
+// Flow: POST /login/device/code → user gets a code → opens github.com/login/device
+//       → enters code → we poll POST /login/oauth/access_token → get token
+//       → GET /user → get stable user.id → derive encryption key
+//
+// This is the ONLY GitHub OAuth flow that works 100% client-side because
+// it doesn't require client_secret for the poll step on public clients.
+
+let _devicePollTimer = null;
+
 async function startOAuthFlow(provider) {
   const errEl = document.getElementById("oauth-error");
   if (errEl) errEl.textContent = "";
 
   if (provider === "github") {
-    await startGitHubFlow();
+    if (!OAUTH_CONFIG.github.clientId && !OAUTH_CONFIG.github.deviceFlowClientId) {
+      showGitHubPATFallback(errEl);
+      return;
+    }
+    await startGitHubDeviceFlow();
   } else if (provider === "google") {
     if (!OAUTH_CONFIG.google.clientId) {
-      if (errEl) errEl.textContent = "Google OAuth not configured yet. Set OAUTH_CONFIG.google.clientId to enable.";
+      if (errEl) errEl.innerHTML = 'Google OAuth requires a client ID. <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:var(--accent);">Register one here</a>, then set <code>OAUTH_CONFIG.google.clientId</code>.';
       return;
     }
-    if (errEl) errEl.textContent = "Google OAuth: coming soon — use Passphrase tab for now.";
+    await startGoogleFlow();
   } else if (provider === "microsoft") {
     if (!OAUTH_CONFIG.microsoft.clientId) {
-      if (errEl) errEl.textContent = "Microsoft OAuth not configured yet. Set OAUTH_CONFIG.microsoft.clientId to enable.";
+      if (errEl) errEl.innerHTML = 'Microsoft OAuth requires a client ID. <a href="https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps" target="_blank" style="color:var(--accent);">Register one here</a>, then set <code>OAUTH_CONFIG.microsoft.clientId</code>.';
       return;
     }
-    if (errEl) errEl.textContent = "Microsoft OAuth: coming soon — use Passphrase tab for now.";
+    await startMicrosoftFlow();
   }
 }
 
-async function startGitHubFlow() {
-  // GitHub flow: user provides a PAT (they likely already have one for Contribute tab)
-  // We call /user to get their stable numeric ID, then derive the encryption key from it.
-  // The PAT is NEVER stored — only used to fetch the user ID.
+// ── GitHub Device Flow ──
 
+async function startGitHubDeviceFlow() {
   const errEl = document.getElementById("oauth-error");
   const btn = document.getElementById("oauth-github-btn");
   if (btn) btn.disabled = true;
 
-  // Check if they already have a token in the Contribute form
-  let token = (document.getElementById("sub-token") || {}).value || "";
+  const clientId = OAUTH_CONFIG.github.deviceFlowClientId || OAUTH_CONFIG.github.clientId;
 
-  if (!token) {
-    // Show inline token input
-    if (btn) btn.disabled = false;
+  try {
+    // Step 1: Request device code
+    // Note: GitHub's device/code endpoint supports CORS for OAuth Apps
+    const resp = await fetch("https://github.com/login/device/code", {
+      method: "POST",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        client_id: clientId,
+        scope: "read:user",
+      }),
+    });
+
+    if (!resp.ok) throw new Error(`GitHub returned ${resp.status}`);
+    const data = await resp.json();
+
+    // data: { device_code, user_code, verification_uri, expires_in, interval }
+    const { device_code, user_code, verification_uri, interval, expires_in } = data;
+
+    // Step 2: Show the user code and open GitHub
     const oauthDiv = document.getElementById("security-tab-oauth");
-    if (!document.getElementById("gh-token-input") && oauthDiv) {
-      const inputHtml = `
-        <div id="gh-token-input" style="margin-top:8px; padding:10px; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius);">
-          <label style="font-size:11px; display:block; margin-bottom:4px;">GitHub Personal Access Token</label>
-          <input id="gh-oauth-token" type="password" placeholder="ghp_xxxxxxxxxxxx" style="width:100%; margin-bottom:4px;" autocomplete="off">
-          <p class="muted" style="font-size:10px; margin:0;">
-            🔒 Used once to verify your identity — <strong>never stored</strong>. 
-            <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--accent);">Create token</a> (no scopes needed — just read:user).
-          </p>
-          <button class="btn" style="margin-top:8px; width:100%;" onclick="completeGitHubFlow()">Verify & Encrypt</button>
+    if (oauthDiv) {
+      // Replace buttons with device code UI
+      const codeUI = document.createElement("div");
+      codeUI.id = "gh-device-ui";
+      codeUI.innerHTML = `
+        <div class="device-code-box">
+          <p style="font-size:13px; margin:0 0 4px 0;">Enter this code at GitHub:</p>
+          <div class="code">${user_code}</div>
+          <ol class="steps">
+            <li>Click the button below (or go to <a href="${verification_uri}" target="_blank" style="color:var(--accent);">${verification_uri}</a>)</li>
+            <li>Paste the code: <strong>${user_code}</strong></li>
+            <li>Click <strong>Authorize</strong></li>
+            <li>Come back here — we'll detect it automatically</li>
+          </ol>
+          <a href="${verification_uri}?user_code=${user_code}" target="_blank" class="btn" style="display:inline-block; margin-top:8px; text-decoration:none;">Open GitHub →</a>
+        </div>
+        <div class="device-poll" id="gh-poll-status">
+          <span class="spinner-sm"></span> Waiting for authorization...
         </div>
       `;
-      const div = document.createElement("div");
-      div.innerHTML = inputHtml;
-      oauthDiv.appendChild(div.firstElementChild);
-      setTimeout(() => {
-        const inp = document.getElementById("gh-oauth-token");
-        if (inp) inp.focus();
-      }, 50);
+      // Hide the original buttons
+      const btns = oauthDiv.querySelector(".oauth-buttons");
+      if (btns) btns.style.display = "none";
+      oauthDiv.appendChild(codeUI);
     }
-    return;
-  }
 
-  await completeGitHubFlow(token);
+    // Step 3: Poll for authorization
+    await pollGitHubDevice(clientId, device_code, interval || 5, expires_in || 900);
+
+  } catch (e) {
+    if (errEl) errEl.textContent = `GitHub Device Flow error: ${e.message}`;
+    if (btn) btn.disabled = false;
+    cleanupDeviceUI();
+  }
 }
 
-async function completeGitHubFlow(providedToken) {
-  const errEl = document.getElementById("oauth-error");
-  const token = providedToken || (document.getElementById("gh-oauth-token") || {}).value || "";
+async function pollGitHubDevice(clientId, deviceCode, interval, expiresIn) {
+  const deadline = Date.now() + expiresIn * 1000;
+  const pollStatus = document.getElementById("gh-poll-status");
 
-  if (!token || !token.trim()) {
+  const poll = async () => {
+    if (Date.now() > deadline) {
+      if (pollStatus) pollStatus.innerHTML = '<span style="color:var(--error);">⏰ Code expired. Please try again.</span>';
+      cleanupDeviceUI();
+      return;
+    }
+
+    try {
+      const resp = await fetch("https://github.com/login/oauth/access_token", {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          client_id: clientId,
+          device_code: deviceCode,
+          grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+        }),
+      });
+
+      const data = await resp.json();
+
+      if (data.error === "authorization_pending") {
+        // Keep polling
+        _devicePollTimer = setTimeout(poll, interval * 1000);
+        return;
+      }
+      if (data.error === "slow_down") {
+        // Increase interval
+        _devicePollTimer = setTimeout(poll, (interval + 5) * 1000);
+        return;
+      }
+      if (data.error) {
+        throw new Error(data.error_description || data.error);
+      }
+
+      // Success! We have an access_token
+      if (pollStatus) pollStatus.innerHTML = '<span style="color:var(--success);">✓ Authorized! Fetching your identity...</span>';
+
+      // Step 4: Get user info
+      const userResp = await fetch("https://api.github.com/user", {
+        headers: { "Authorization": `Bearer ${data.access_token}`, "Accept": "application/vnd.github+json" },
+      });
+      if (!userResp.ok) throw new Error(`GitHub API returned ${userResp.status}`);
+      const user = await userResp.json();
+
+      // Step 5: Derive key and encrypt
+      await completeOAuthEncryption("github", String(user.id), {
+        username: user.login,
+        avatarUrl: user.avatar_url,
+        name: user.name || user.login,
+      });
+
+      cleanupDeviceUI();
+
+    } catch (e) {
+      if (pollStatus) pollStatus.innerHTML = `<span style="color:var(--error);">Error: ${e.message}</span>`;
+      cleanupDeviceUI();
+    }
+  };
+
+  _devicePollTimer = setTimeout(poll, interval * 1000);
+}
+
+function cleanupDeviceUI() {
+  if (_devicePollTimer) { clearTimeout(_devicePollTimer); _devicePollTimer = null; }
+  const ui = document.getElementById("gh-device-ui");
+  if (ui) ui.remove();
+  const btns = document.querySelector("#security-tab-oauth .oauth-buttons");
+  if (btns) btns.style.display = "";
+  const btn = document.getElementById("oauth-github-btn");
+  if (btn) btn.disabled = false;
+}
+
+// ── GitHub PAT Fallback (when no OAuth App configured) ──
+
+function showGitHubPATFallback(errEl) {
+  const oauthDiv = document.getElementById("security-tab-oauth");
+  if (!document.getElementById("gh-token-input") && oauthDiv) {
+    const inputHtml = `
+      <div id="gh-token-input" style="margin-top:8px; padding:10px; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius);">
+        <label style="font-size:11px; display:block; margin-bottom:4px;">GitHub Personal Access Token</label>
+        <input id="gh-oauth-token" type="password" placeholder="ghp_xxxxxxxxxxxx" style="width:100%; margin-bottom:4px;" autocomplete="off">
+        <p class="muted" style="font-size:10px; margin:0;">
+          🔒 Used once to verify your identity — <strong>never stored</strong>.
+          <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--accent);">Create token</a> (no scopes needed — just read:user).
+        </p>
+        <button class="btn" style="margin-top:8px; width:100%;" onclick="completePATFlow()">Verify & Encrypt</button>
+      </div>
+    `;
+    const div = document.createElement("div");
+    div.innerHTML = inputHtml;
+    oauthDiv.appendChild(div.firstElementChild);
+    setTimeout(() => { const inp = document.getElementById("gh-oauth-token"); if (inp) inp.focus(); }, 50);
+  }
+}
+
+async function completePATFlow() {
+  const errEl = document.getElementById("oauth-error");
+  const token = (document.getElementById("gh-oauth-token") || {}).value || (document.getElementById("sub-token") || {}).value || "";
+
+  if (!token.trim()) {
     if (errEl) errEl.textContent = "Please enter your GitHub Personal Access Token.";
     return;
   }
@@ -2850,62 +3081,157 @@ async function completeGitHubFlow(providedToken) {
 
   try {
     const resp = await fetch("https://api.github.com/user", {
-      headers: {
-        "Authorization": `Bearer ${token.trim()}`,
-        "Accept": "application/vnd.github+json",
-      },
+      headers: { "Authorization": `Bearer ${token.trim()}`, "Accept": "application/vnd.github+json" },
     });
-
-    if (!resp.ok) {
-      const body = await resp.json().catch(() => ({}));
-      throw new Error(body.message || `GitHub returned ${resp.status}`);
-    }
-
+    if (!resp.ok) { const body = await resp.json().catch(() => ({})); throw new Error(body.message || `GitHub returned ${resp.status}`); }
     const user = await resp.json();
-    const userId = String(user.id);  // Stable numeric ID — never changes
-    const username = user.login;
-    const avatarUrl = user.avatar_url;
 
-    // Derive encryption key from GitHub identity
-    _sessionKey = await deriveKeyFromOAuth("github", userId);
-    _encryptionEnabled = true;
-
-    // Migrate existing plaintext data
-    const existingProfiles = localStorage.getItem(STORAGE_KEY);
-    const existingRecipes = localStorage.getItem(CUSTOM_RECIPES_KEY);
-
-    if (existingProfiles && !existingProfiles.startsWith(ENCRYPTED_PREFIX)) {
-      try {
-        profiles = JSON.parse(existingProfiles);
-        await saveProfilesSecure();
-      } catch {}
-    }
-    if (existingRecipes && !existingRecipes.startsWith(ENCRYPTED_PREFIX)) {
-      try {
-        customRecipes = JSON.parse(existingRecipes);
-        await saveCustomRecipesSecure();
-      } catch {}
-    }
-
-    // Store auth metadata (NOT the token — just the method + display info)
-    localStorage.setItem("ztdc_encrypted", "true");
-    localStorage.setItem("ztdc_auth_method", "github");
-    localStorage.setItem("ztdc_auth_display", JSON.stringify({ username, avatarUrl }));
-    localStorage.setItem("ztdc_enc_check", await encryptData({check: true}, _sessionKey));
-
-    enableEncryptedStorage();
-    updateSecurityBar(true, "github", { username, avatarUrl });
-    closeSecurityModal();
-
-    // Reload data with decryption
-    await loadProfilesSecure();
-    await loadCustomRecipesSecure();
-    refreshAll();
-
+    await completeOAuthEncryption("github", String(user.id), {
+      username: user.login,
+      avatarUrl: user.avatar_url,
+      name: user.name || user.login,
+    });
   } catch (e) {
     if (errEl) errEl.textContent = `GitHub auth failed: ${e.message}`;
-    const btn = document.getElementById("oauth-github-btn");
-    if (btn) btn.disabled = false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GOOGLE — Google Identity Services (one-tap / popup)
+// ═══════════════════════════════════════════════════════════════
+//
+// Uses the GIS library's ID token flow (not access token).
+// Returns a JWT id_token containing 'sub' claim = stable user ID.
+// No backend needed — the JWT is verified client-side for our purposes
+// (we only need the sub for key derivation, not for API calls).
+
+async function startGoogleFlow() {
+  const errEl = document.getElementById("oauth-error");
+
+  if (typeof google === "undefined" || !google.accounts) {
+    if (errEl) errEl.textContent = "Google Identity Services library not loaded. Check your network connection.";
+    return;
+  }
+
+  try {
+    google.accounts.id.initialize({
+      client_id: OAUTH_CONFIG.google.clientId,
+      callback: handleGoogleResponse,
+      auto_select: true,  // Enable one-tap if user previously consented
+      cancel_on_tap_outside: false,
+    });
+
+    // Try one-tap first, fall back to popup button
+    google.accounts.id.prompt((notification) => {
+      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+        // One-tap not available — show the rendered button
+        const oauthDiv = document.getElementById("security-tab-oauth");
+        if (oauthDiv && !document.getElementById("g-signin-btn")) {
+          const container = document.createElement("div");
+          container.id = "g-signin-btn";
+          container.style.cssText = "display:flex; justify-content:center; margin:12px 0;";
+          oauthDiv.appendChild(container);
+          google.accounts.id.renderButton(container, {
+            type: "standard",
+            theme: "filled_black",
+            size: "large",
+            text: "signin_with",
+            width: 300,
+          });
+        }
+      }
+    });
+  } catch (e) {
+    if (errEl) errEl.textContent = `Google sign-in error: ${e.message}`;
+  }
+}
+
+function handleGoogleResponse(response) {
+  const errEl = document.getElementById("oauth-error");
+
+  try {
+    // Decode the JWT (we don't need to verify signature for key derivation —
+    // the sub is only used as entropy for our local encryption key)
+    const payload = JSON.parse(atob(response.credential.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+
+    const sub = payload.sub;  // Stable Google user ID
+    const email = payload.email || "";
+    const name = payload.name || email;
+    const picture = payload.picture || "";
+
+    if (!sub) throw new Error("No 'sub' claim in Google ID token");
+
+    completeOAuthEncryption("google", sub, {
+      username: email,
+      avatarUrl: picture,
+      name: name,
+    });
+  } catch (e) {
+    if (errEl) errEl.textContent = `Google auth error: ${e.message}`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MICROSOFT — MSAL.js popup (PKCE, no backend)
+// ═══════════════════════════════════════════════════════════════
+//
+// Uses MSAL.js 2.x PublicClientApplication with loginPopup().
+// Returns account.localAccountId (= oid claim) as stable user ID.
+
+let _msalInstance = null;
+
+function getMsalInstance() {
+  if (_msalInstance) return _msalInstance;
+  if (typeof msal === "undefined" || !msal.PublicClientApplication) return null;
+
+  _msalInstance = new msal.PublicClientApplication({
+    auth: {
+      clientId: OAUTH_CONFIG.microsoft.clientId,
+      authority: `https://login.microsoftonline.com/${OAUTH_CONFIG.microsoft.tenantId}`,
+      redirectUri: CALLBACK_URL,
+    },
+    cache: {
+      cacheLocation: "sessionStorage",
+      storeAuthStateInCookie: false,
+    },
+  });
+  return _msalInstance;
+}
+
+async function startMicrosoftFlow() {
+  const errEl = document.getElementById("oauth-error");
+
+  const msalApp = getMsalInstance();
+  if (!msalApp) {
+    if (errEl) errEl.textContent = "MSAL.js library not loaded. Check your network connection.";
+    return;
+  }
+
+  try {
+    await msalApp.initialize();
+
+    const loginResponse = await msalApp.loginPopup({
+      scopes: ["openid", "profile", "email"],
+      prompt: "select_account",
+    });
+
+    const account = loginResponse.account;
+    const sub = account.localAccountId || account.homeAccountId;
+    const name = account.name || account.username || "";
+    const email = account.username || "";
+
+    if (!sub) throw new Error("No account ID from Microsoft");
+
+    await completeOAuthEncryption("microsoft", sub, {
+      username: email,
+      name: name,
+    });
+  } catch (e) {
+    if (e.errorCode === "user_cancelled") {
+      if (errEl) errEl.textContent = "Sign-in cancelled.";
+    } else {
+      if (errEl) errEl.textContent = `Microsoft auth error: ${e.message || e.errorMessage || e}`;
+    }
   }
 }
 
@@ -2949,6 +3275,35 @@ updateSecurityBar = function(encrypted, method, userInfo) {
 
 // ── Enhanced boot: handle OAuth re-authentication ──
 
+
+
+// ── Update OAuth button badges based on config ──
+function updateOAuthBadges() {
+  const badges = [
+    { id: "gh-status-tag", ready: OAUTH_CONFIG.github.ready, fallback: "PAT fallback" },
+    { id: "google-status-tag", ready: OAUTH_CONFIG.google.ready },
+    { id: "ms-status-tag", ready: OAUTH_CONFIG.microsoft.ready },
+  ];
+  badges.forEach(b => {
+    const el = document.getElementById(b.id);
+    if (!el) return;
+    if (b.ready) {
+      el.style.background = "var(--success)";
+      el.style.color = "#000";
+      el.textContent = "ready";
+    } else if (b.fallback) {
+      el.style.background = "var(--accent)";
+      el.style.color = "#000";
+      el.textContent = b.fallback;
+    } else {
+      el.style.background = "var(--warn,#d29920)";
+      el.style.color = "#000";
+      el.textContent = "needs client ID";
+    }
+  });
+}
+// Run on load
+setTimeout(updateOAuthBadges, 100);
 
 (async function checkEncryptionState() {
   const wasEncrypted = localStorage.getItem("ztdc_encrypted") === "true";

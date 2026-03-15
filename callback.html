@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>ZTDC — Authentication</title>
+<style>
+  body { font-family: system-ui, -apple-system, sans-serif; background: #0d1117; color: #e6edf3; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 32px; max-width: 400px; text-align: center; }
+  .success { color: #3fb950; }
+  .error { color: #f85149; }
+  .spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid #30363d; border-top-color: #58a6ff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  code { background: #1f2937; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="card" id="status">
+  <div class="spinner"></div>
+  <p>Completing authentication...</p>
+</div>
+
+<script>
+// OAuth callback handler for ZTDC
+// This page receives the OAuth redirect, extracts the code/token,
+// and postMessages it back to the parent window that opened this popup.
+
+(function() {
+  const statusEl = document.getElementById("status");
+
+  function show(type, msg) {
+    statusEl.innerHTML = `<h2 class="${type}">${type === "success" ? "✓ Authenticated" : "✗ Error"}</h2><p>${msg}</p>`;
+  }
+
+  // Parse URL params (code flow) and hash fragment (implicit flow)
+  const params = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.substring(1));
+
+  const error = params.get("error") || hash.get("error");
+  if (error) {
+    const desc = params.get("error_description") || hash.get("error_description") || error;
+    show("error", desc);
+    if (window.opener) {
+      window.opener.postMessage({ type: "ztdc-oauth-error", error: desc }, "*");
+    }
+    setTimeout(() => window.close(), 3000);
+    return;
+  }
+
+  // Authorization code (GitHub PKCE flow)
+  const code = params.get("code");
+  const state = params.get("state");
+
+  // Access token from implicit/fragment flow
+  const accessToken = hash.get("access_token");
+  const idToken = hash.get("id_token");
+
+  if (code && state) {
+    // Authorization code flow — send code back to parent for exchange
+    show("success", "Returning to app...");
+    if (window.opener) {
+      window.opener.postMessage({ type: "ztdc-oauth-code", code, state }, window.location.origin);
+    }
+    setTimeout(() => window.close(), 1000);
+  } else if (accessToken || idToken) {
+    // Implicit/token flow — send token back
+    show("success", "Returning to app...");
+    if (window.opener) {
+      window.opener.postMessage({
+        type: "ztdc-oauth-token",
+        accessToken: accessToken || null,
+        idToken: idToken || null,
+        state: hash.get("state") || null,
+      }, window.location.origin);
+    }
+    setTimeout(() => window.close(), 1000);
+  } else {
+    show("error", "No authorization code or token received.");
+    setTimeout(() => window.close(), 3000);
+  }
+})();
+</script>
+</body>
+</html>
