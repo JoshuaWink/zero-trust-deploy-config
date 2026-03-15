@@ -188,6 +188,14 @@
     .stat .sv { font-size: 18px; }
     .tag { font-size: 9px; }
   }
+
+  .recipe-sub { background: var(--surface2); border: 1px solid var(--border); }
+  .recipe-sub.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .recipe-panel { }
+
+  .recipe-sub { background: var(--surface2); border: 1px solid var(--border); }
+  .recipe-sub.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .recipe-panel { }
 </style>
 </head>
 <body>
@@ -316,76 +324,124 @@
 </div>
 
 
+
+
 <!-- ═══════════════════════════════════════════════════════════════════════
-     PAGE: RECIPES — Multi-platform deployment stacks.
+     PAGE: RECIPES — Composable multi-platform deployment stacks.
      ═══════════════════════════════════════════════════════════════════════ -->
 <div id="pg-recipes" class="page">
-  <div class="card" style="border-color: var(--accent); background: linear-gradient(135deg, #161b22 0%, #1a2332 100%);">
-    <h2 style="margin-bottom:4px;">🧱 Deployment Recipes</h2>
-    <p class="muted" style="font-size:13px; margin:0;">
-      Recipes are <strong>multi-platform deployment stacks</strong> — composable blueprints that chain platform contracts together.
-      Pick a recipe, see the full pipeline, and generate linked profiles for every step.
-    </p>
+
+  <!-- Sub-nav: Browse / My Recipes / Build -->
+  <div class="card" style="padding:8px 14px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+    <button class="btn btn-s recipe-sub active" data-rsub="browse" onclick="switchRecipeSub('browse')">📖 Community</button>
+    <button class="btn btn-s recipe-sub" data-rsub="my" onclick="switchRecipeSub('my')">⭐ My Recipes</button>
+    <button class="btn btn-s recipe-sub" data-rsub="build" onclick="switchRecipeSub('build')">🔧 Builder</button>
+    <span style="flex:1;"></span>
+    <span class="muted" style="font-size:11px;"><span id="community-count">0</span> community · <span id="custom-count">0</span> custom</span>
   </div>
 
-  <div class="card">
-    <div class="flex-b" style="flex-direction:row; align-items:end; flex-wrap:wrap; gap:10px;">
-      <div style="flex:1; min-width:200px;">
-        <label>Select Recipe</label>
-        <select id="recipe-select" onchange="renderRecipeDetail()">
-          <option value="">— choose a recipe —</option>
-        </select>
+  <!-- SUB: Browse Community Recipes -->
+  <div id="rsub-browse" class="recipe-panel">
+    <div class="card">
+      <div class="flex-b" style="flex-direction:row; align-items:end; flex-wrap:wrap; gap:10px;">
+        <div style="flex:1; min-width:200px;">
+          <label>Community Recipe</label>
+          <select id="recipe-select" onchange="renderRecipeDetail()">
+            <option value="">— choose a recipe —</option>
+          </select>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <label style="font-size:11px; color:var(--muted);">Filter:</label>
+          <select id="recipe-filter" onchange="filterRecipes()" style="min-width:100px;">
+            <option value="">All</option>
+            <option value="starter">Starter</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+        </div>
       </div>
-      <div style="display:flex; gap:6px;">
-        <label style="font-size:11px; color:var(--muted);">Filter:</label>
-        <select id="recipe-filter" onchange="filterRecipes()" style="min-width:100px;">
-          <option value="">All</option>
-          <option value="starter">Starter</option>
-          <option value="intermediate">Intermediate</option>
-          <option value="advanced">Advanced</option>
-        </select>
+    </div>
+    <div id="recipe-out">
+      <div class="card"><div class="empty">
+        <div style="font-size:2rem; margin-bottom:8px;">📖</div>
+        <p>Browse community-contributed deployment stacks.</p>
+        <p class="muted" style="font-size:12px; margin-top:6px;">Pick a recipe, then <strong>Fork</strong> it to customize, or <strong>Generate Profiles</strong> directly.</p>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- SUB: My Recipes (custom, stored in localStorage) -->
+  <div id="rsub-my" class="recipe-panel" style="display:none;">
+    <div class="flex-b" style="margin-bottom:10px; flex-direction:row;">
+      <h3 style="font-size:14px; color:var(--muted);">My Custom Recipes</h3>
+      <button class="btn btn-s" onclick="switchRecipeSub('build'); startNewRecipe();">+ New Recipe</button>
+    </div>
+    <div id="my-recipes-list">
+      <div class="card"><div class="empty">
+        <div style="font-size:2rem; margin-bottom:8px;">⭐</div>
+        <p>No custom recipes yet.</p>
+        <p class="muted" style="font-size:12px; margin-top:6px;">Fork a community recipe or build one from scratch in the <strong>Builder</strong> tab.</p>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- SUB: Recipe Builder -->
+  <div id="rsub-build" class="recipe-panel" style="display:none;">
+    <div class="card">
+      <h3 style="margin-bottom:10px;" id="rb-title">Build a Recipe</h3>
+      <div class="form-row">
+        <label>Recipe ID (slug)</label>
+        <input id="rb-id" placeholder="my-api-stack">
       </div>
+      <div class="form-row">
+        <label>Recipe Name</label>
+        <input id="rb-name" placeholder="My API Stack">
+      </div>
+      <div class="form-row">
+        <label>Description</label>
+        <textarea id="rb-desc" rows="2" placeholder="What this stack does and when to use it..."></textarea>
+      </div>
+      <div class="form-row-inline">
+        <div><label>Category</label>
+          <select id="rb-category">
+            <option value="fullstack">fullstack</option>
+            <option value="api">api</option>
+            <option value="frontend">frontend</option>
+            <option value="data-pipeline">data-pipeline</option>
+            <option value="edge">edge</option>
+            <option value="microservices">microservices</option>
+          </select>
+        </div>
+        <div><label>Complexity</label>
+          <select id="rb-complexity">
+            <option value="starter">starter</option>
+            <option value="intermediate">intermediate</option>
+            <option value="advanced">advanced</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Steps -->
+      <div style="margin-top:16px;">
+        <div class="flex-b" style="flex-direction:row;">
+          <label style="margin:0; font-size:14px; font-weight:600;">Pipeline Steps</label>
+          <button class="btn btn-s btn-sec" onclick="addRecipeStep()">+ Add Step</button>
+        </div>
+        <div id="rb-steps" style="margin-top:8px;"></div>
+        <div id="rb-no-steps" class="muted" style="font-size:12px; text-align:center; padding:16px;">No steps yet. Add your first pipeline step above.</div>
+      </div>
+
+      <!-- Actions -->
+      <div style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-ok" onclick="saveCustomRecipe()">💾 Save Recipe</button>
+        <button class="btn btn-sec" onclick="cancelRecipeBuilder()">Cancel</button>
+        <span style="flex:1;"></span>
+        <button class="btn btn-s" style="font-size:11px;" onclick="exportRecipeJson()">📋 Copy JSON</button>
+      </div>
+      <div id="rb-msg" style="margin-top:10px;"></div>
     </div>
   </div>
 
-  <div id="recipe-out">
-    <div class="card"><div class="empty">
-      <div style="font-size:2rem; margin-bottom:8px;">🧱</div>
-      <p>Select a recipe to see the full deployment stack.</p>
-      <p class="muted" style="font-size:12px; margin-top:6px;">Each recipe shows which platforms compose together, what vars flow between them, and lets you generate linked profiles for the whole stack.</p>
-    </div></div>
-  </div>
-</div>
-
-
-<!-- ═══════════════════════════════════════════════════════════════════
-     PAGE: CONTRIBUTE — Submit new platform contracts.
-     ═══════════════════════════════════════════════════════════════════ -->
-<div id="pg-contribute" class="page">
-  <div class="card">
-    <h2>Submit a New Platform Contract</h2>
-    <p class="muted" style="font-size:12px; margin-bottom:14px;">
-      Missing a platform? Submit a new contract and it will be reviewed via GitHub PR.
-    </p>
-    <div class="form-row">
-      <label>Your GitHub Username</label>
-      <input id="sub-user" placeholder="octocat">
-    </div>
-    <div class="form-row">
-      <label>GitHub Personal Access Token <span class="muted">(needs <code>repo</code> scope)</span></label>
-      <input id="sub-token" type="password" placeholder="ghp_xxxxx">
-    </div>
-    <div class="form-row">
-      <label>Contract JSON</label>
-      <textarea id="sub-json" rows="12" placeholder='Paste contract JSON matching the schema...'></textarea>
-    </div>
-    <div class="form-row">
-      <label>Notes (optional)</label>
-      <textarea id="sub-notes" rows="2" placeholder="Why this platform should be added..."></textarea>
-    </div>
-    <button class="btn" onclick="submitContract()">Submit via GitHub PR</button>
-  </div>
-  <div id="submit-result"></div>
 </div>
 
 </main>
@@ -1152,8 +1208,12 @@ function schemaCheck(d) {
 
 
 /* ═════════════════════════════════════════════════════════════════════════
-   RECIPE LOADING + RENDERING
+   RECIPE ENGINE — Loading, CRUD, Builder, Fork
    ═════════════════════════════════════════════════════════════════════════ */
+const CUSTOM_RECIPES_KEY = "ztdc_custom_recipes";
+let customRecipes = {};
+let editingRecipeId = null;
+
 async function loadRecipes() {
   try {
     const base = getContractsBaseUrl().replace(/\/contracts$/, "/recipes");
@@ -1166,8 +1226,41 @@ async function loadRecipes() {
     });
     await Promise.all(fetches);
   } catch(e) { console.warn("Recipe loading failed:", e); }
+  loadCustomRecipes();
 }
 
+function loadCustomRecipes() {
+  try {
+    const raw = localStorage.getItem(CUSTOM_RECIPES_KEY);
+    if (raw) customRecipes = JSON.parse(raw);
+  } catch(e) { customRecipes = {}; }
+}
+
+function saveCustomRecipes() {
+  localStorage.setItem(CUSTOM_RECIPES_KEY, JSON.stringify(customRecipes));
+}
+
+// ── Sub-tab navigation ──
+function switchRecipeSub(sub) {
+  document.querySelectorAll(".recipe-sub").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".recipe-panel").forEach(p => p.style.display = "none");
+  const btn = document.querySelector(`.recipe-sub[data-rsub="${sub}"]`);
+  if (btn) btn.classList.add("active");
+  const panel = document.getElementById("rsub-" + sub);
+  if (panel) panel.style.display = "";
+  if (sub === "my") renderMyRecipes();
+  if (sub === "browse") renderRecipeDetail();
+}
+
+// ── Recipe counts ──
+function updateRecipeCounts() {
+  const cc = document.getElementById("community-count");
+  const uc = document.getElementById("custom-count");
+  if (cc) cc.textContent = Object.keys(recipes).length;
+  if (uc) uc.textContent = Object.keys(customRecipes).length;
+}
+
+// ── Community recipe select ──
 function populateRecipeSelect() {
   const sel = document.getElementById("recipe-select");
   const filter = document.getElementById("recipe-filter");
@@ -1184,6 +1277,7 @@ function populateRecipeSelect() {
     sel.appendChild(opt);
   }
   if (cur && recipes[cur]) sel.value = cur;
+  updateRecipeCounts();
 }
 
 function filterRecipes() {
@@ -1191,28 +1285,30 @@ function filterRecipes() {
   renderRecipeDetail();
 }
 
+// ── Render community recipe detail (read-only view with Fork + Generate) ──
 function renderRecipeDetail() {
   const sel = document.getElementById("recipe-select");
   const out = document.getElementById("recipe-out");
   const r = recipes[sel ? sel.value : ""];
   if (!r) {
     out.innerHTML = `<div class="card"><div class="empty">
-      <div style="font-size:2rem; margin-bottom:8px;">\ud83e\uddf1</div>
-      <p>Select a recipe to see the full deployment stack.</p>
-      <p class="muted" style="font-size:12px; margin-top:6px;">Each recipe shows which platforms compose together, what vars flow between them, and lets you generate linked profiles for the whole stack.</p>
+      <div style="font-size:2rem; margin-bottom:8px;">\ud83d\udcd6</div>
+      <p>Browse community-contributed deployment stacks.</p>
+      <p class="muted" style="font-size:12px; margin-top:6px;">Pick a recipe, then <strong>Fork</strong> it to customize, or <strong>Generate Profiles</strong> directly.</p>
     </div></div>`;
     return;
   }
+  out.innerHTML = renderRecipeCard(r, true);
+}
 
+function renderRecipeCard(r, isCommunity) {
   const roleIcons = { build:"\ud83d\udce6", ci:"\u2699\ufe0f", deploy:"\ud83d\ude80", secrets:"\ud83d\udd10", routing:"\ud83c\udf10", monitoring:"\ud83d\udcca", storage:"\ud83d\uddc4\ufe0f", iac:"\ud83c\udfd7\ufe0f", cdn:"\u26a1" };
   const complexIcons = { starter:"\ud83c\udf31", intermediate:"\u2699\ufe0f", advanced:"\ud83d\udd25" };
 
-  // Flow diagram
   const flowHtml = r.flow ? `<div style="background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; font-family:monospace; font-size:13px; color:var(--accent); text-align:center; margin:12px 0; letter-spacing:0.5px;">${esc(r.flow)}</div>` : "";
 
-  // Steps
   let stepsHtml = "";
-  for (const step of r.steps) {
+  for (const step of (r.steps || [])) {
     const icon = roleIcons[step.role] || "\u2022";
     const platName = contracts[step.platform] ? contracts[step.platform].name : step.platform;
     const depStr = step.depends_on && step.depends_on.length ? `<span class="muted" style="font-size:11px;">depends on: ${step.depends_on.join(", ")}</span>` : "";
@@ -1224,7 +1320,7 @@ function renderRecipeDetail() {
           <td><code style="font-size:11px;">${esc(v.key)}</code></td>
           <td style="font-size:11px;">${esc(v.description)}</td>
           <td>${v.required ? '<span style="color:var(--error); font-size:11px;">required</span>' : '<span class="muted" style="font-size:11px;">optional</span>'}</td>
-          <td style="font-size:11px;"><span class="tag tag-i">${esc(v.suggested_backend || "—")}</span></td>
+          <td style="font-size:11px;"><span class="tag tag-i">${esc(v.suggested_backend || "\u2014")}</span></td>
         </tr>`
       ).join("");
       varsHtml = `<table class="tbl" style="margin-top:8px; font-size:12px;">
@@ -1238,7 +1334,7 @@ function renderRecipeDetail() {
         <div class="flex-b" style="flex-direction:row; align-items:center; gap:8px; flex-wrap:wrap;">
           <div>
             <span style="font-size:16px;">${icon}</span>
-            <strong>${esc(step.label)}</strong>
+            <strong>${esc(step.label || step.id)}</strong>
             <span class="tag tag-i" style="margin-left:6px;">${esc(platName)}</span>
             <span class="tag" style="background:var(--surface2); color:var(--muted); margin-left:4px;">${esc(step.role)}</span>
           </div>
@@ -1249,43 +1345,91 @@ function renderRecipeDetail() {
       </div>`;
   }
 
-  // Total var count
-  const totalVars = r.steps.reduce((n, s) => n + (s.shared_vars ? s.shared_vars.length : 0), 0);
-  const reqVars = r.steps.reduce((n, s) => n + (s.shared_vars ? s.shared_vars.filter(v => v.required).length : 0), 0);
+  const totalVars = (r.steps||[]).reduce((n, s) => n + (s.shared_vars ? s.shared_vars.length : 0), 0);
+  const reqVars = (r.steps||[]).reduce((n, s) => n + (s.shared_vars ? s.shared_vars.filter(v => v.required).length : 0), 0);
 
-  out.innerHTML = `
+  const actionBtns = isCommunity
+    ? `<button class="btn" onclick="generateRecipeProfiles('${esc(r.id)}', false)">\ud83d\ude80 Generate Profiles</button>
+       <button class="btn btn-sec" onclick="forkRecipe('${esc(r.id)}')">\ud83d\udd00 Fork to My Recipes</button>`
+    : `<button class="btn" onclick="generateRecipeProfiles('${esc(r.id)}', true)">\ud83d\ude80 Generate Profiles</button>
+       <button class="btn btn-sec" onclick="editCustomRecipe('${esc(r.id)}')">\u270f\ufe0f Edit</button>
+       <button class="btn btn-s btn-err" onclick="deleteCustomRecipe('${esc(r.id)}')">\ud83d\uddd1 Delete</button>`;
+
+  return `
     <div class="card">
       <div class="flex-b" style="flex-direction:row; align-items:start; gap:12px; flex-wrap:wrap;">
         <div style="flex:1; min-width:250px;">
           <h2 style="margin-bottom:4px;">${complexIcons[r.complexity] || ""} ${esc(r.name)}</h2>
-          <p class="muted" style="font-size:13px; margin-bottom:10px;">${esc(r.description)}</p>
+          <p class="muted" style="font-size:13px; margin-bottom:10px;">${esc(r.description || "")}</p>
           <div style="display:flex; gap:8px; flex-wrap:wrap; font-size:12px;">
-            <span class="tag tag-i">${esc(r.category)}</span>
-            <span class="tag" style="background:var(--surface2); color:var(--muted);">${r.steps.length} step${r.steps.length>1?"s":""}</span>
+            <span class="tag tag-i">${esc(r.category || "")}</span>
+            <span class="tag" style="background:var(--surface2); color:var(--muted);">${(r.steps||[]).length} step${(r.steps||[]).length!==1?"s":""}</span>
             <span class="tag" style="background:var(--surface2); color:var(--muted);">${totalVars} vars (${reqVars} required)</span>
-            <span class="tag" style="background:var(--surface2); color:var(--muted);">${esc(r.complexity)}</span>
+            <span class="tag" style="background:var(--surface2); color:var(--muted);">${esc(r.complexity || "")}</span>
+            ${isCommunity ? '<span class="tag" style="background:#23863620; color:var(--success);">community</span>' : '<span class="tag" style="background:#d2992220; color:var(--warn);">custom</span>'}
           </div>
         </div>
-        <button class="btn" onclick="generateRecipeProfiles('${esc(r.id)}')">\ud83d\ude80 Generate All Profiles</button>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          ${actionBtns}
+        </div>
       </div>
       ${flowHtml}
       ${r.notes ? `<p style="font-size:12px; color:var(--warn); margin-top:8px;">\ud83d\udca1 ${esc(r.notes)}</p>` : ""}
     </div>
-
-    <h3 style="margin:16px 0 8px; font-size:14px; color:var(--muted);">Pipeline Steps</h3>
+    <h3 style="margin:16px 0 8px; font-size:14px; color:var(--muted);">Pipeline Steps (${(r.steps||[]).length})</h3>
     ${stepsHtml}
-
     <div id="recipe-gen-msg" style="margin-top:12px;"></div>
   `;
 }
 
-function generateRecipeProfiles(recipeId) {
-  const r = recipes[recipeId];
+// ── My Recipes list ──
+function renderMyRecipes() {
+  const out = document.getElementById("my-recipes-list");
+  if (!out) return;
+  const keys = Object.keys(customRecipes).sort();
+  if (keys.length === 0) {
+    out.innerHTML = `<div class="card"><div class="empty">
+      <div style="font-size:2rem; margin-bottom:8px;">\u2b50</div>
+      <p>No custom recipes yet.</p>
+      <p class="muted" style="font-size:12px; margin-top:6px;">Fork a community recipe or build one from scratch in the <strong>Builder</strong> tab.</p>
+    </div></div>`;
+    return;
+  }
+  let html = "";
+  for (const id of keys) {
+    const r = customRecipes[id];
+    html += renderRecipeCard(r, false);
+  }
+  out.innerHTML = html;
+  updateRecipeCounts();
+}
+
+// ── Fork community recipe ──
+function forkRecipe(id) {
+  const src = recipes[id];
+  if (!src) return;
+  const newId = src.id + "-custom";
+  let fid = newId;
+  let n = 1;
+  while (customRecipes[fid]) { fid = newId + "-" + (++n); }
+  const clone = JSON.parse(JSON.stringify(src));
+  clone.id = fid;
+  clone.name = src.name + " (My Fork)";
+  customRecipes[fid] = clone;
+  saveCustomRecipes();
+  updateRecipeCounts();
+  switchRecipeSub("build");
+  loadRecipeIntoBuilder(fid);
+}
+
+// ── Generate profiles from recipe ──
+function generateRecipeProfiles(recipeId, isCustom) {
+  const r = isCustom ? customRecipes[recipeId] : recipes[recipeId];
   if (!r) return;
   let created = 0;
-  for (const step of r.steps) {
+  for (const step of (r.steps || [])) {
     const pid = `${r.id}-${step.id}`;
-    if (profiles[pid]) continue; // don't overwrite existing
+    if (profiles[pid]) continue;
     const c = contracts[step.platform];
     if (!c) continue;
     const vars = (step.shared_vars || []).map(v => ({
@@ -1300,7 +1444,7 @@ function generateRecipeProfiles(recipeId) {
     }));
     profiles[pid] = {
       id: pid,
-      name: `${r.name} — ${step.label}`,
+      name: `${r.name} \u2014 ${step.label || step.id}`,
       platform: step.platform,
       environment: "production",
       vars: vars,
@@ -1310,12 +1454,11 @@ function generateRecipeProfiles(recipeId) {
   }
   saveProfiles();
   refreshAll();
-
   const msg = document.getElementById("recipe-gen-msg");
   if (msg) {
     if (created > 0) {
       msg.innerHTML = `<div style="background:#23863620; border:1px solid var(--success); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--success);">
-        \u2705 Generated ${created} profile${created>1?"s":""}! Switch to <strong>Profiles</strong> tab or <strong>Overview</strong> to view them.
+        \u2705 Generated ${created} profile${created>1?"s":""}! Switch to <strong>Profiles</strong> or <strong>Overview</strong> to validate and export.
       </div>`;
     } else {
       msg.innerHTML = `<div style="background:#1f6feb20; border:1px solid var(--accent); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--accent);">
@@ -1325,182 +1468,303 @@ function generateRecipeProfiles(recipeId) {
   }
 }
 
+// ══════════════════════════════════════════════════
+// RECIPE BUILDER
+// ══════════════════════════════════════════════════
+const STEP_ROLES = ["build","ci","deploy","secrets","routing","monitoring","storage","iac","cdn"];
+let builderSteps = [];
+
+function startNewRecipe() {
+  editingRecipeId = null;
+  document.getElementById("rb-title").textContent = "Build a Recipe";
+  document.getElementById("rb-id").value = "";
+  document.getElementById("rb-id").disabled = false;
+  document.getElementById("rb-name").value = "";
+  document.getElementById("rb-desc").value = "";
+  document.getElementById("rb-category").value = "api";
+  document.getElementById("rb-complexity").value = "starter";
+  builderSteps = [];
+  renderBuilderSteps();
+  document.getElementById("rb-msg").innerHTML = "";
+}
+
+function addRecipeStep() {
+  builderSteps.push({
+    id: "step-" + (builderSteps.length + 1),
+    platform: Object.keys(contracts).sort()[0] || "",
+    role: "deploy",
+    label: "",
+    depends_on: [],
+    shared_vars: [],
+    notes: ""
+  });
+  renderBuilderSteps();
+}
+
+function removeRecipeStep(idx) {
+  builderSteps.splice(idx, 1);
+  renderBuilderSteps();
+}
+
+function moveStepUp(idx) {
+  if (idx <= 0) return;
+  [builderSteps[idx-1], builderSteps[idx]] = [builderSteps[idx], builderSteps[idx-1]];
+  renderBuilderSteps();
+}
+
+function moveStepDown(idx) {
+  if (idx >= builderSteps.length - 1) return;
+  [builderSteps[idx], builderSteps[idx+1]] = [builderSteps[idx+1], builderSteps[idx]];
+  renderBuilderSteps();
+}
+
+function renderBuilderSteps() {
+  const cont = document.getElementById("rb-steps");
+  const empty = document.getElementById("rb-no-steps");
+  if (!cont) return;
+  if (builderSteps.length === 0) {
+    cont.innerHTML = "";
+    if (empty) empty.style.display = "";
+    return;
+  }
+  if (empty) empty.style.display = "none";
+
+  const platformOpts = Object.keys(contracts).sort().map(id =>
+    `<option value="${esc(id)}">${esc(contracts[id].name)}</option>`
+  ).join("");
+
+  const roleOpts = STEP_ROLES.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join("");
+
+  let html = "";
+  builderSteps.forEach((step, idx) => {
+    const varsHtml = (step.shared_vars || []).map((v, vi) => `
+      <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px; flex-wrap:wrap;">
+        <input style="width:140px; font-size:11px;" placeholder="KEY_NAME" value="${esc(v.key)}" onchange="updateStepVar(${idx},${vi},'key',this.value)">
+        <input style="flex:1; min-width:120px; font-size:11px;" placeholder="Description" value="${esc(v.description)}" onchange="updateStepVar(${idx},${vi},'description',this.value)">
+        <select style="width:100px; font-size:11px;" onchange="updateStepVar(${idx},${vi},'suggested_backend',this.value)">
+          ${(contracts[step.platform] ? contracts[step.platform].secret_backends : []).map(b =>
+            `<option value="${esc(b)}" ${v.suggested_backend===b?"selected":""}>${esc(b)}</option>`
+          ).join("")}
+        </select>
+        <label style="font-size:11px; display:flex; align-items:center; gap:2px; margin:0;">
+          <input type="checkbox" ${v.required?"checked":""} onchange="updateStepVar(${idx},${vi},'required',this.checked)"> req
+        </label>
+        <button class="btn btn-s btn-err" style="padding:2px 6px; font-size:10px;" onclick="removeStepVar(${idx},${vi})">\u2715</button>
+      </div>
+    `).join("");
+
+    html += `
+      <div class="card" style="border-left:3px solid var(--accent); margin-bottom:8px; padding:10px 14px;">
+        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:8px;">
+          <span class="muted" style="font-size:11px; font-weight:600;">Step ${idx+1}</span>
+          <button class="btn btn-s btn-sec" style="padding:1px 6px; font-size:10px;" onclick="moveStepUp(${idx})" ${idx===0?"disabled":""}>&#9650;</button>
+          <button class="btn btn-s btn-sec" style="padding:1px 6px; font-size:10px;" onclick="moveStepDown(${idx})" ${idx===builderSteps.length-1?"disabled":""}>&#9660;</button>
+          <span style="flex:1;"></span>
+          <button class="btn btn-s btn-err" style="padding:2px 8px; font-size:11px;" onclick="removeRecipeStep(${idx})">\ud83d\uddd1 Remove</button>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
+          <div style="flex:1; min-width:140px;">
+            <label style="font-size:11px;">Platform</label>
+            <select value="${esc(step.platform)}" onchange="updateStep(${idx},'platform',this.value); renderBuilderSteps();">
+              ${platformOpts.replace(`value="${esc(step.platform)}"`, `value="${esc(step.platform)}" selected`)}
+            </select>
+          </div>
+          <div style="flex:1; min-width:100px;">
+            <label style="font-size:11px;">Role</label>
+            <select onchange="updateStep(${idx},'role',this.value)">
+              ${roleOpts.replace(`value="${esc(step.role)}"`, `value="${esc(step.role)}" selected`)}
+            </select>
+          </div>
+          <div style="flex:1; min-width:140px;">
+            <label style="font-size:11px;">Label</label>
+            <input value="${esc(step.label)}" placeholder="e.g. CI Pipeline" onchange="updateStep(${idx},'label',this.value)">
+          </div>
+          <div style="flex:1; min-width:100px;">
+            <label style="font-size:11px;">Step ID</label>
+            <input value="${esc(step.id)}" placeholder="step-id" onchange="updateStep(${idx},'id',this.value)">
+          </div>
+        </div>
+        <div style="margin-bottom:6px;">
+          <label style="font-size:11px;">Notes</label>
+          <input value="${esc(step.notes || "")}" placeholder="Optional notes..." style="font-size:11px;" onchange="updateStep(${idx},'notes',this.value)">
+        </div>
+        <div>
+          <div class="flex-b" style="flex-direction:row; margin-bottom:4px;">
+            <label style="font-size:11px; margin:0;">Variables</label>
+            <button class="btn btn-s btn-sec" style="padding:1px 6px; font-size:10px;" onclick="addStepVar(${idx})">+ var</button>
+          </div>
+          ${varsHtml || '<span class="muted" style="font-size:11px;">No variables. Click + var to add.</span>'}
+        </div>
+      </div>
+    `;
+  });
+  cont.innerHTML = html;
+}
+
+function updateStep(idx, key, val) { builderSteps[idx][key] = val; }
+function updateStepVar(si, vi, key, val) { builderSteps[si].shared_vars[vi][key] = val; }
+
+function addStepVar(idx) {
+  const c = contracts[builderSteps[idx].platform];
+  builderSteps[idx].shared_vars.push({
+    key: "", description: "", required: false,
+    suggested_backend: c ? (c.secret_backends[0] || "env-file") : "env-file",
+    suggested_path: ""
+  });
+  renderBuilderSteps();
+}
+
+function removeStepVar(si, vi) {
+  builderSteps[si].shared_vars.splice(vi, 1);
+  renderBuilderSteps();
+}
+
+function saveCustomRecipe() {
+  const id = document.getElementById("rb-id").value.trim();
+  const name = document.getElementById("rb-name").value.trim();
+  const desc = document.getElementById("rb-desc").value.trim();
+  const category = document.getElementById("rb-category").value;
+  const complexity = document.getElementById("rb-complexity").value;
+  const msg = document.getElementById("rb-msg");
+
+  const errors = [];
+  if (!id || !/^[a-z][a-z0-9-]*$/.test(id)) errors.push("ID must be kebab-case (e.g. my-api-stack)");
+  if (!name) errors.push("Name is required");
+  if (builderSteps.length === 0) errors.push("Add at least one step");
+  // Check for duplicate step IDs
+  const stepIds = builderSteps.map(s => s.id);
+  if (new Set(stepIds).size !== stepIds.length) errors.push("Step IDs must be unique");
+
+  if (!editingRecipeId && (recipes[id] || customRecipes[id])) errors.push(`ID '${id}' already exists`);
+
+  if (errors.length) {
+    msg.innerHTML = `<div style="background:#f8514920; border:1px solid var(--error); border-radius:var(--radius); padding:10px 14px; font-size:12px; color:var(--error);">\u274c ${errors.join("<br>")}</div>`;
+    return;
+  }
+
+  // Build flow string from steps
+  const flow = builderSteps.map(s => {
+    const platName = contracts[s.platform] ? contracts[s.platform].name : s.platform;
+    return `${platName} (${s.label || s.role})`;
+  }).join(" \u2192 ");
+
+  const recipe = {
+    id: id,
+    name: name,
+    description: desc,
+    category: category,
+    complexity: complexity,
+    flow: flow,
+    steps: builderSteps.map(s => ({
+      id: s.id,
+      platform: s.platform,
+      role: s.role,
+      label: s.label || s.id,
+      depends_on: s.depends_on || [],
+      shared_vars: (s.shared_vars || []).filter(v => v.key.trim()),
+      notes: s.notes || ""
+    })),
+    notes: ""
+  };
+
+  if (editingRecipeId && editingRecipeId !== id) {
+    delete customRecipes[editingRecipeId];
+  }
+  customRecipes[id] = recipe;
+  saveCustomRecipes();
+  updateRecipeCounts();
+  editingRecipeId = null;
+
+  msg.innerHTML = `<div style="background:#23863620; border:1px solid var(--success); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--success);">
+    \u2705 Recipe <strong>${esc(name)}</strong> saved! View it in <strong>My Recipes</strong>.
+  </div>`;
+}
+
+function cancelRecipeBuilder() {
+  editingRecipeId = null;
+  startNewRecipe();
+  switchRecipeSub("my");
+}
+
+function editCustomRecipe(id) {
+  switchRecipeSub("build");
+  loadRecipeIntoBuilder(id);
+}
+
+function loadRecipeIntoBuilder(id) {
+  const r = customRecipes[id];
+  if (!r) return;
+  editingRecipeId = id;
+  document.getElementById("rb-title").textContent = "Edit Recipe: " + r.name;
+  document.getElementById("rb-id").value = r.id;
+  document.getElementById("rb-id").disabled = true;
+  document.getElementById("rb-name").value = r.name;
+  document.getElementById("rb-desc").value = r.description || "";
+  document.getElementById("rb-category").value = r.category || "api";
+  document.getElementById("rb-complexity").value = r.complexity || "starter";
+  builderSteps = JSON.parse(JSON.stringify(r.steps || []));
+  renderBuilderSteps();
+  document.getElementById("rb-msg").innerHTML = "";
+}
+
+function deleteCustomRecipe(id) {
+  if (!confirm(`Delete recipe "${customRecipes[id]?.name || id}"?`)) return;
+  delete customRecipes[id];
+  saveCustomRecipes();
+  renderMyRecipes();
+  updateRecipeCounts();
+}
+
+function exportRecipeJson() {
+  const id = document.getElementById("rb-id").value.trim();
+  const name = document.getElementById("rb-name").value.trim();
+  const desc = document.getElementById("rb-desc").value.trim();
+  const recipe = {
+    id: id || "untitled",
+    name: name || "Untitled Recipe",
+    description: desc,
+    category: document.getElementById("rb-category").value,
+    complexity: document.getElementById("rb-complexity").value,
+    steps: builderSteps.map(s => ({
+      id: s.id, platform: s.platform, role: s.role,
+      label: s.label || s.id, depends_on: s.depends_on || [],
+      shared_vars: (s.shared_vars || []).filter(v => v.key.trim()),
+      notes: s.notes || ""
+    }))
+  };
+  navigator.clipboard.writeText(JSON.stringify(recipe, null, 2)).then(() => {
+    const msg = document.getElementById("rb-msg");
+    if (msg) msg.innerHTML = `<div style="background:#1f6feb20; border:1px solid var(--accent); border-radius:var(--radius); padding:8px 14px; font-size:12px; color:var(--accent);">\ud83d\udccb Recipe JSON copied to clipboard! Use this to submit via the <strong>Contribute</strong> tab.</div>`;
+  });
+}
 
 
-/* ═════════════════════════════════════════════════════════════════════════
-   RECIPE LOADING + RENDERING
-   ═════════════════════════════════════════════════════════════════════════ */
-async function loadRecipes() {
+
+
+async function submitRecipe() {
+  const user = document.getElementById("sub-user").value.trim();
+  const token = document.getElementById("sub-token").value.trim();
+  const jsonStr = document.getElementById("sub-recipe-json").value.trim();
+  const out = document.getElementById("submit-recipe-result");
+  if (!user || !token || !jsonStr) { out.innerHTML = '<div style="color:var(--error);">All fields required (username, token, and recipe JSON).</div>'; return; }
+  let recipe;
+  try { recipe = JSON.parse(jsonStr); } catch(e) { out.innerHTML = `<div style="color:var(--error);">Invalid JSON: ${esc(e.message)}</div>`; return; }
+  if (!recipe.id || !recipe.name || !recipe.steps) { out.innerHTML = '<div style="color:var(--error);">Recipe must have id, name, and steps.</div>'; return; }
+  out.innerHTML = '<div style="color:var(--accent);">Submitting recipe...</div>';
   try {
-    const base = getContractsBaseUrl().replace(/\/contracts$/, "/recipes");
-    const indexResp = await fetch(base + "/index.json");
-    if (!indexResp.ok) { console.warn("No recipes found"); return; }
-    const index = await indexResp.json();
-    const fetches = index.recipes.map(async (id) => {
-      const resp = await fetch(base + "/" + id + ".json");
-      if (resp.ok) { const d = await resp.json(); recipes[d.id] = d; }
-    });
-    await Promise.all(fetches);
-  } catch(e) { console.warn("Recipe loading failed:", e); }
-}
-
-function populateRecipeSelect() {
-  const sel = document.getElementById("recipe-select");
-  const filter = document.getElementById("recipe-filter");
-  if (!sel) return;
-  const fv = filter ? filter.value : "";
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">\u2014 choose a recipe \u2014</option>';
-  const sorted = Object.values(recipes).sort((a,b) => a.name.localeCompare(b.name));
-  for (const r of sorted) {
-    if (fv && r.complexity !== fv) continue;
-    const opt = document.createElement("option");
-    opt.value = r.id;
-    opt.textContent = `${r.name} (${r.complexity})`;
-    sel.appendChild(opt);
-  }
-  if (cur && recipes[cur]) sel.value = cur;
-}
-
-function filterRecipes() {
-  populateRecipeSelect();
-  renderRecipeDetail();
-}
-
-function renderRecipeDetail() {
-  const sel = document.getElementById("recipe-select");
-  const out = document.getElementById("recipe-out");
-  const r = recipes[sel ? sel.value : ""];
-  if (!r) {
-    out.innerHTML = `<div class="card"><div class="empty">
-      <div style="font-size:2rem; margin-bottom:8px;">\ud83e\uddf1</div>
-      <p>Select a recipe to see the full deployment stack.</p>
-      <p class="muted" style="font-size:12px; margin-top:6px;">Each recipe shows which platforms compose together, what vars flow between them, and lets you generate linked profiles for the whole stack.</p>
-    </div></div>`;
-    return;
-  }
-
-  const roleIcons = { build:"\ud83d\udce6", ci:"\u2699\ufe0f", deploy:"\ud83d\ude80", secrets:"\ud83d\udd10", routing:"\ud83c\udf10", monitoring:"\ud83d\udcca", storage:"\ud83d\uddc4\ufe0f", iac:"\ud83c\udfd7\ufe0f", cdn:"\u26a1" };
-  const complexIcons = { starter:"\ud83c\udf31", intermediate:"\u2699\ufe0f", advanced:"\ud83d\udd25" };
-
-  // Flow diagram
-  const flowHtml = r.flow ? `<div style="background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; font-family:monospace; font-size:13px; color:var(--accent); text-align:center; margin:12px 0; letter-spacing:0.5px;">${esc(r.flow)}</div>` : "";
-
-  // Steps
-  let stepsHtml = "";
-  for (const step of r.steps) {
-    const icon = roleIcons[step.role] || "\u2022";
-    const platName = contracts[step.platform] ? contracts[step.platform].name : step.platform;
-    const depStr = step.depends_on && step.depends_on.length ? `<span class="muted" style="font-size:11px;">depends on: ${step.depends_on.join(", ")}</span>` : "";
-
-    let varsHtml = "";
-    if (step.shared_vars && step.shared_vars.length) {
-      const rows = step.shared_vars.map(v =>
-        `<tr>
-          <td><code style="font-size:11px;">${esc(v.key)}</code></td>
-          <td style="font-size:11px;">${esc(v.description)}</td>
-          <td>${v.required ? '<span style="color:var(--error); font-size:11px;">required</span>' : '<span class="muted" style="font-size:11px;">optional</span>'}</td>
-          <td style="font-size:11px;"><span class="tag tag-i">${esc(v.suggested_backend || "—")}</span></td>
-        </tr>`
-      ).join("");
-      varsHtml = `<table class="tbl" style="margin-top:8px; font-size:12px;">
-        <thead><tr><th>Variable</th><th>Description</th><th>Required</th><th>Backend</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>`;
-    }
-
-    stepsHtml += `
-      <div class="card" style="border-left:3px solid var(--accent); margin-bottom:8px;">
-        <div class="flex-b" style="flex-direction:row; align-items:center; gap:8px; flex-wrap:wrap;">
-          <div>
-            <span style="font-size:16px;">${icon}</span>
-            <strong>${esc(step.label)}</strong>
-            <span class="tag tag-i" style="margin-left:6px;">${esc(platName)}</span>
-            <span class="tag" style="background:var(--surface2); color:var(--muted); margin-left:4px;">${esc(step.role)}</span>
-          </div>
-          ${depStr}
-        </div>
-        ${step.notes ? `<p class="muted" style="font-size:12px; margin-top:6px;">${esc(step.notes)}</p>` : ""}
-        ${varsHtml}
-      </div>`;
-  }
-
-  // Total var count
-  const totalVars = r.steps.reduce((n, s) => n + (s.shared_vars ? s.shared_vars.length : 0), 0);
-  const reqVars = r.steps.reduce((n, s) => n + (s.shared_vars ? s.shared_vars.filter(v => v.required).length : 0), 0);
-
-  out.innerHTML = `
-    <div class="card">
-      <div class="flex-b" style="flex-direction:row; align-items:start; gap:12px; flex-wrap:wrap;">
-        <div style="flex:1; min-width:250px;">
-          <h2 style="margin-bottom:4px;">${complexIcons[r.complexity] || ""} ${esc(r.name)}</h2>
-          <p class="muted" style="font-size:13px; margin-bottom:10px;">${esc(r.description)}</p>
-          <div style="display:flex; gap:8px; flex-wrap:wrap; font-size:12px;">
-            <span class="tag tag-i">${esc(r.category)}</span>
-            <span class="tag" style="background:var(--surface2); color:var(--muted);">${r.steps.length} step${r.steps.length>1?"s":""}</span>
-            <span class="tag" style="background:var(--surface2); color:var(--muted);">${totalVars} vars (${reqVars} required)</span>
-            <span class="tag" style="background:var(--surface2); color:var(--muted);">${esc(r.complexity)}</span>
-          </div>
-        </div>
-        <button class="btn" onclick="generateRecipeProfiles('${esc(r.id)}')">\ud83d\ude80 Generate All Profiles</button>
-      </div>
-      ${flowHtml}
-      ${r.notes ? `<p style="font-size:12px; color:var(--warn); margin-top:8px;">\ud83d\udca1 ${esc(r.notes)}</p>` : ""}
-    </div>
-
-    <h3 style="margin:16px 0 8px; font-size:14px; color:var(--muted);">Pipeline Steps</h3>
-    ${stepsHtml}
-
-    <div id="recipe-gen-msg" style="margin-top:12px;"></div>
-  `;
-}
-
-function generateRecipeProfiles(recipeId) {
-  const r = recipes[recipeId];
-  if (!r) return;
-  let created = 0;
-  for (const step of r.steps) {
-    const pid = `${r.id}-${step.id}`;
-    if (profiles[pid]) continue; // don't overwrite existing
-    const c = contracts[step.platform];
-    if (!c) continue;
-    const vars = (step.shared_vars || []).map(v => ({
-      key: v.key,
-      description: v.description,
-      required: v.required || false,
-      secret_ref: {
-        backend: v.suggested_backend || c.secret_backends[0] || "env-file",
-        path: v.suggested_path || v.key.toLowerCase(),
-        version: null
-      }
-    }));
-    profiles[pid] = {
-      id: pid,
-      name: `${r.name} — ${step.label}`,
-      platform: step.platform,
-      environment: "production",
-      vars: vars,
-      metadata: { recipe: r.id, step: step.id }
-    };
-    created++;
-  }
-  saveProfiles();
-  refreshAll();
-
-  const msg = document.getElementById("recipe-gen-msg");
-  if (msg) {
-    if (created > 0) {
-      msg.innerHTML = `<div style="background:#23863620; border:1px solid var(--success); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--success);">
-        \u2705 Generated ${created} profile${created>1?"s":""}! Switch to <strong>Profiles</strong> tab or <strong>Overview</strong> to view them.
-      </div>`;
-    } else {
-      msg.innerHTML = `<div style="background:#1f6feb20; border:1px solid var(--accent); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--accent);">
-        All profiles for this recipe already exist. Delete them from Profiles tab to regenerate.
-      </div>`;
-    }
+    const repo = "JoshuaWink/zero-trust-deploy-config";
+    const branch = "recipe-" + recipe.id + "-" + Date.now();
+    const mainRef = await fetch(`https://api.github.com/repos/${repo}/git/ref/heads/main`, { headers: { Authorization: `token ${token}` } }).then(r => r.json());
+    const sha = mainRef.object.sha;
+    await fetch(`https://api.github.com/repos/${repo}/git/refs`, { method: "POST", headers: { Authorization: `token ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ ref: `refs/heads/${branch}`, sha }) });
+    const fileContent = btoa(unescape(encodeURIComponent(JSON.stringify(recipe, null, 2) + "\n")));
+    await fetch(`https://api.github.com/repos/${repo}/contents/recipes/${recipe.id}.json`, { method: "PUT", headers: { Authorization: `token ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ message: `feat: add recipe ${recipe.id}`, content: fileContent, branch }) });
+    const pr = await fetch(`https://api.github.com/repos/${repo}/pulls`, { method: "POST", headers: { Authorization: `token ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ title: `New Recipe: ${recipe.name}`, body: `Submitted via zero-trust-deploy-config UI.\n\n**Recipe:** ${recipe.name}\n**Steps:** ${recipe.steps.length}\n**Category:** ${recipe.category || "N/A"}`, head: branch, base: "main" }) }).then(r => r.json());
+    out.innerHTML = `<div style="background:#23863620; border:1px solid var(--success); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--success);">\u2705 PR created! <a href="${pr.html_url}" target="_blank" style="color:var(--accent);">${pr.html_url}</a></div>`;
+  } catch(e) {
+    out.innerHTML = `<div style="color:var(--error);">Error: ${esc(e.message)}</div>`;
   }
 }
-
 
 /* ══════════════════════════════════════════════════════════════════════
    DEMO PROFILES
@@ -1613,10 +1877,6 @@ function clearDemos() {
     setTimeout(() => { msg.style.display = "none"; }, 3000);
   }
 }
-
-/* ══════════════════════════════════════════════════════════════════════
-   UTILS
-   ══════════════════════════════════════════════════════════════════════ */
 function esc(s) {
   if (s == null) return "";
   const d = document.createElement("div"); d.textContent = String(s); return d.innerHTML;
