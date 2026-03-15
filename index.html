@@ -6,7 +6,7 @@
 <title>Zero-Trust Deploy Config</title>
 <style>
   :root {
-    --bg: #0d1117; --surface: #161b22; --border: #30363d;
+    --bg: #0d1117; --surface: #161b22; --surface2: #1c2333; --border: #30363d;
     --text: #e6edf3; --muted: #7d8590; --accent: #58a6ff;
     --success: #3fb950; --warn: #d29922; --error: #f85149;
     --radius: 8px;
@@ -16,165 +16,177 @@
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
     background: var(--bg); color: var(--text); line-height: 1.6;
   }
+
+  /* ── Header ───────────────────────────────────────────────── */
   header {
     background: var(--surface); border-bottom: 1px solid var(--border);
-    padding: 16px 24px; display: flex; align-items: center; gap: 16px;
-    flex-wrap: wrap;
+    padding: 14px 24px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   }
-  header h1 { font-size: 20px; font-weight: 600; }
-  header .badge {
-    font-size: 11px; background: var(--accent); color: var(--bg);
+  header h1 { font-size: 18px; font-weight: 600; }
+  .badge {
+    font-size: 10px; background: var(--accent); color: var(--bg);
     padding: 2px 8px; border-radius: 12px; font-weight: 600;
   }
+  .header-meta {
+    margin-left: auto; font-size: 12px; color: var(--muted); white-space: nowrap;
+  }
+
+  /* ── Nav ───────────────────────────────────────────────────── */
   nav {
     display: flex; gap: 0; background: var(--surface);
     border-bottom: 1px solid var(--border); padding: 0 24px;
     overflow-x: auto; -webkit-overflow-scrolling: touch;
   }
   nav button {
-    background: none; border: none; color: var(--muted); padding: 12px 20px;
-    cursor: pointer; font-size: 14px; border-bottom: 2px solid transparent;
+    background: none; border: none; color: var(--muted); padding: 10px 18px;
+    cursor: pointer; font-size: 13px; border-bottom: 2px solid transparent;
     transition: all 0.15s; white-space: nowrap;
   }
   nav button:hover { color: var(--text); }
   nav button.active { color: var(--accent); border-bottom-color: var(--accent); }
-  main { max-width: 1200px; margin: 0 auto; padding: 24px; }
-  .tab { display: none; }
-  .tab.active { display: block; }
+
+  /* ── Layout ───────────────────────────────────────────────── */
+  main { max-width: 1100px; margin: 0 auto; padding: 20px; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── Cards ────────────────────────────────────────────────── */
   .card {
     background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
+    border-radius: var(--radius); padding: 18px; margin-bottom: 14px;
   }
-  .card h2 { font-size: 18px; margin-bottom: 12px; }
-  .card h3 { font-size: 15px; margin-bottom: 8px; color: var(--accent); }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
-  .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
-  .stat {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 16px; text-align: center;
-  }
-  .stat .value { font-size: 28px; font-weight: 700; color: var(--accent); }
-  .stat .label { font-size: 12px; color: var(--muted); text-transform: uppercase; }
-  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  .card h2 { font-size: 16px; margin-bottom: 10px; }
+  .card h3 { font-size: 14px; margin-bottom: 6px; color: var(--accent); }
+
+  /* ── Forms ────────────────────────────────────────────────── */
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
   input, select, textarea {
     width: 100%; background: var(--bg); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 8px 12px; color: var(--text);
-    font-size: 14px; font-family: inherit;
+    font-size: 13px; font-family: inherit;
   }
-  input:focus, select:focus, textarea:focus {
-    outline: none; border-color: var(--accent);
-  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
   textarea { resize: vertical; min-height: 80px; }
-  button.btn {
-    background: var(--accent); color: var(--bg); border: none;
-    border-radius: var(--radius); padding: 10px 20px; font-size: 14px;
+  .form-row { margin-bottom: 12px; }
+  .form-row-inline { display: flex; gap: 10px; align-items: end; }
+  .form-row-inline > * { flex: 1; }
+
+  /* ── Buttons ──────────────────────────────────────────────── */
+  .btn {
+    display: inline-block; background: var(--accent); color: var(--bg); border: none;
+    border-radius: var(--radius); padding: 8px 16px; font-size: 13px;
     cursor: pointer; font-weight: 600; transition: opacity 0.15s;
   }
-  button.btn:hover { opacity: 0.85; }
-  button.btn.secondary { background: var(--border); color: var(--text); }
-  button.btn.danger { background: var(--error); }
-  button.btn.success { background: var(--success); }
+  .btn:hover { opacity: 0.85; }
+  .btn-s { padding: 5px 10px; font-size: 11px; }
+  .btn-sec { background: var(--border); color: var(--text); }
+  .btn-ok { background: var(--success); }
+  .btn-err { background: var(--error); }
+
+  /* ── Tags ─────────────────────────────────────────────────── */
   .tag {
-    display: inline-block; font-size: 11px; padding: 2px 8px;
-    border-radius: 12px; margin: 2px; font-weight: 600;
+    display: inline-block; font-size: 10px; padding: 2px 7px;
+    border-radius: 12px; margin: 1px; font-weight: 600;
   }
-  .tag.info { background: #1f6feb33; color: var(--accent); }
-  .tag.success { background: #23863633; color: var(--success); }
-  .tag.warn { background: #9e6a0333; color: var(--warn); }
-  .tag.error { background: #da363333; color: var(--error); }
+  .tag-i { background: #1f6feb33; color: var(--accent); }
+  .tag-ok { background: #23863633; color: var(--success); }
+  .tag-w { background: #9e6a0333; color: var(--warn); }
+  .tag-e { background: #da363333; color: var(--error); }
+
+  /* ── Tables ───────────────────────────────────────────────── */
   table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
-  th { font-size: 12px; color: var(--muted); text-transform: uppercase; font-weight: 600; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 12px; }
+  th { color: var(--muted); text-transform: uppercase; font-weight: 600; font-size: 11px; }
   pre {
     background: var(--bg); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 16px; overflow-x: auto;
-    font-size: 13px; line-height: 1.5; margin-top: 8px;
+    border-radius: var(--radius); padding: 14px; overflow-x: auto;
+    font-size: 12px; line-height: 1.5; margin-top: 6px;
   }
   code { font-family: 'SF Mono', 'Fira Code', Consolas, monospace; }
-  .form-row { margin-bottom: 14px; }
-  .form-row-inline { display: flex; gap: 12px; align-items: end; }
-  .form-row-inline > * { flex: 1; }
-  .var-entry {
-    background: var(--bg); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 12px; margin-bottom: 8px;
-  }
-  .flex-between { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-  .empty { text-align: center; padding: 40px; color: var(--muted); }
-  .issue-list { list-style: none; }
-  .issue-list li { padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 14px; }
-  .result-box { padding: 20px; border-radius: var(--radius); margin-top: 16px; }
-  .result-box.valid { background: #23863620; border: 1px solid var(--success); }
-  .result-box.invalid { background: #da363320; border: 1px solid var(--error); }
-  .copy-btn {
-    float: right; background: var(--border); color: var(--text);
-    border: none; border-radius: 4px; padding: 4px 10px; font-size: 12px;
-    cursor: pointer;
-  }
-  .copy-btn:hover { background: var(--accent); color: var(--bg); }
-  .hidden { display: none; }
-  footer { text-align: center; padding: 24px; color: var(--muted); font-size: 12px; }
 
-  /* ── Preview tab ──────────────────────────────────────────── */
-  .preview-summary-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 10px; margin-bottom: 16px;
+  /* ── Stat grid ────────────────────────────────────────────── */
+  .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .stat {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px; text-align: center;
   }
-  .preview-stat {
-    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 12px; text-align: center;
-  }
-  .preview-stat .pv-value { font-size: 20px; font-weight: 700; }
-  .preview-stat .pv-label { font-size: 11px; color: var(--muted); text-transform: uppercase; margin-top: 2px; }
-  .preview-format-tabs {
+  .stat .sv { font-size: 20px; font-weight: 700; }
+  .stat .sl { font-size: 10px; color: var(--muted); text-transform: uppercase; margin-top: 2px; }
+
+  /* ── Platform grid ────────────────────────────────────────── */
+  .pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+
+  /* ── Result boxes ─────────────────────────────────────────── */
+  .rbox { padding: 16px; border-radius: var(--radius); margin-top: 12px; }
+  .rbox-ok { background: #23863620; border: 1px solid var(--success); }
+  .rbox-err { background: #da363320; border: 1px solid var(--error); }
+  .issues { list-style: none; }
+  .issues li { padding: 6px 8px; border-bottom: 1px solid var(--border); font-size: 12px; }
+
+  /* ── Format tabs ──────────────────────────────────────────── */
+  .fmt-tabs {
     display: flex; gap: 0; border-bottom: 1px solid var(--border);
-    overflow-x: auto; margin-bottom: 0; flex-wrap: nowrap;
+    overflow-x: auto; flex-wrap: nowrap;
   }
-  .preview-format-tabs button {
-    background: none; border: none; color: var(--muted); padding: 8px 14px;
-    cursor: pointer; font-size: 12px; white-space: nowrap;
+  .fmt-tabs button {
+    background: none; border: none; color: var(--muted); padding: 7px 12px;
+    cursor: pointer; font-size: 11px; white-space: nowrap;
     border-bottom: 2px solid transparent; transition: all 0.15s;
   }
-  .preview-format-tabs button:hover { color: var(--text); }
-  .preview-format-tabs button.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .preview-code-panel { display: none; }
-  .preview-code-panel.active { display: block; }
+  .fmt-tabs button:hover { color: var(--text); }
+  .fmt-tabs button.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .fmt-panel { display: none; }
+  .fmt-panel.active { display: block; }
 
-  /* ── Mobile responsive ────────────────────────────────────── */
-  @media (max-width: 768px) {
-    header { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
-    header h1 { font-size: 17px; }
-    header .badge { font-size: 10px; }
-    nav { padding: 0 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    nav button { padding: 10px 12px; font-size: 12px; white-space: nowrap; }
-    main { padding: 16px; }
-    .card { padding: 14px; }
-    .card h2 { font-size: 16px; }
-    .grid { grid-template-columns: 1fr; }
-    .stat-grid { grid-template-columns: repeat(2, 1fr); }
-    .form-row-inline { flex-direction: column; gap: 8px; }
-    .form-row-inline > * { flex: unset; width: 100%; }
-    .var-entry .form-row-inline { flex-direction: column; }
-    .var-entry .form-row-inline > div[style*="flex:0"] { flex: unset !important; width: 100%; }
-    .flex-between { flex-direction: column; align-items: stretch; gap: 8px; }
-    table { font-size: 12px; display: block; overflow-x: auto; }
-    th, td { padding: 6px 8px; white-space: nowrap; }
-    pre { font-size: 11px; padding: 10px; }
-    .preview-summary-grid { grid-template-columns: repeat(2, 1fr); }
-    .preview-format-tabs button { padding: 8px 10px; font-size: 11px; }
-    .result-box { padding: 14px; }
-    .issue-list li { padding: 6px 8px; font-size: 12px; }
-    footer { padding: 16px; font-size: 11px; }
+  /* ── Copy button ──────────────────────────────────────────── */
+  .cp {
+    float: right; background: var(--border); color: var(--text);
+    border: none; border-radius: 4px; padding: 3px 8px; font-size: 11px; cursor: pointer;
+  }
+  .cp:hover { background: var(--accent); color: var(--bg); }
+
+  /* ── Collapsible ──────────────────────────────────────────── */
+  .collapse-toggle {
+    background: none; border: none; color: var(--accent); cursor: pointer;
+    font-size: 13px; padding: 0; font-weight: 600;
+  }
+  .collapse-body { display: none; margin-top: 10px; }
+  .collapse-body.open { display: block; }
+
+  /* ── Var entry ────────────────────────────────────────────── */
+  .var-entry {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 10px; margin-bottom: 6px;
   }
 
-  @media (max-width: 480px) {
+  /* ── Utils ────────────────────────────────────────────────── */
+  .flex-b { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .hidden { display: none; }
+  .muted { color: var(--muted); }
+  .empty { text-align: center; padding: 32px; color: var(--muted); }
+  footer { text-align: center; padding: 20px; color: var(--muted); font-size: 11px; }
+
+  /* ── Mobile ───────────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    header { padding: 12px 16px; }
     header h1 { font-size: 15px; }
-    .stat-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-    .stat .value { font-size: 22px; }
-    .stat .label { font-size: 10px; }
-    .card { padding: 12px; margin-bottom: 12px; }
-    nav button { padding: 8px 10px; font-size: 11px; }
-    .preview-summary-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-    .tag { font-size: 10px; padding: 1px 6px; }
+    nav { padding: 0 8px; }
+    nav button { padding: 8px 12px; font-size: 12px; }
+    main { padding: 14px; }
+    .card { padding: 14px; }
+    .pgrid { grid-template-columns: 1fr; }
+    .form-row-inline { flex-direction: column; gap: 8px; }
+    .form-row-inline > * { flex: unset; width: 100%; }
+    .flex-b { flex-direction: column; align-items: stretch; gap: 6px; }
+    .var-entry .form-row-inline { flex-direction: column; }
+    table { display: block; overflow-x: auto; }
+    th, td { padding: 5px 6px; white-space: nowrap; }
+    pre { font-size: 11px; padding: 10px; }
+  }
+  @media (max-width: 480px) {
+    .stats { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat .sv { font-size: 18px; }
+    .tag { font-size: 9px; }
   }
 </style>
 </head>
@@ -183,241 +195,159 @@
 <header>
   <h1>🔐 Zero-Trust Deploy Config</h1>
   <span class="badge">STATIC</span>
-  <span style="color: var(--muted); font-size: 13px; margin-left: auto; white-space: nowrap;">
-    Contracts: <span id="contract-count">—</span> |
-    Profiles: <span id="profile-count">—</span>
+  <span class="header-meta">
+    <span id="hdr-contracts">—</span> contracts ·
+    <span id="hdr-profiles">—</span> profiles
   </span>
 </header>
 
 <nav id="nav">
-  <button data-tab="dashboard" class="active">Dashboard</button>
-  <button data-tab="platforms">Platforms</button>
-  <button data-tab="profiles">Profiles</button>
-  <button data-tab="preview">Preview</button>
-  <button data-tab="validate">Validate</button>
-  <button data-tab="export">Export</button>
-  <button data-tab="submit">Submit Contract</button>
+  <button data-page="overview" class="active">Overview</button>
+  <button data-page="profiles">Profiles</button>
+  <button data-page="contribute">Contribute</button>
 </nav>
 
 <main>
-  <!-- ═══ DASHBOARD ═══ -->
-  <div id="tab-dashboard" class="tab active">
-    <div class="stat-grid" id="stats"></div>
 
-    <!-- ── Demo Banner ──────────────────────────────────────── -->
-    <div class="card" id="demo-banner" style="border-color: var(--accent); background: linear-gradient(135deg, #161b22 0%, #1a2332 100%);">
-      <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-        <div style="flex: 1; min-width: 260px;">
-          <h2 style="margin-bottom: 6px;">🚀 Try the Live Demo</h2>
-          <p style="color: var(--muted); font-size: 14px; margin-bottom: 0;">
-            Load <strong>4 pre-built profiles</strong> to see validation, exports, and error detection in action.
-            Includes a passing deploy, a naming violation, a limits breach, and a backend mismatch — all the scenarios you'd hit in real life.
-          </p>
-        </div>
-        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-          <button class="btn" style="background: var(--accent); color: var(--bg); font-weight: 600; padding: 10px 20px;" onclick="loadDemoProfiles()">▶ Load Demo Profiles</button>
-          <button class="btn secondary" onclick="clearDemoProfiles()" style="padding: 10px 16px;">🗑 Clear Demos</button>
-        </div>
+<!-- ═══════════════════════════════════════════════════════════════════
+     PAGE: OVERVIEW — The app. Select profile → see everything instantly.
+     ═══════════════════════════════════════════════════════════════════ -->
+<div id="pg-overview" class="page active">
+
+  <!-- Demo Banner -->
+  <div class="card" id="demo-banner" style="border-color: var(--accent); background: linear-gradient(135deg, #161b22 0%, #1a2332 100%);">
+    <div class="flex-b" style="flex-direction:row; align-items:center; flex-wrap:wrap; gap:12px;">
+      <div style="flex:1; min-width:220px;">
+        <h2 style="margin-bottom:4px;">🚀 Try the Live Demo</h2>
+        <p class="muted" style="font-size:13px; margin:0;">
+          Load <strong>4 pre-built profiles</strong> — a passing K8s deploy, a Vercel app, an ECS worker,
+          and a broken deploy with intentional errors. See validation + exports instantly.
+        </p>
       </div>
-      <div id="demo-loaded-msg" style="display:none; margin-top: 12px;"></div>
-    </div>
-
-    <!-- ── Guided Walkthrough ───────────────────────────────── -->
-    <div class="card" id="walkthrough-card" style="display:none;">
-      <h2>📍 Guided Walkthrough</h2>
-      <p style="color: var(--muted); font-size: 14px; margin-bottom: 14px;">
-        Demo profiles loaded! Follow these steps to explore every feature:
-      </p>
-      <div id="walkthrough-steps" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px;">
-        <div class="walkthrough-step" style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; cursor: pointer;" onclick="goToTab('platforms')">
-          <div style="font-size: 1.3rem; margin-bottom: 4px;">1️⃣ Platforms</div>
-          <p style="color: var(--muted); font-size: 13px; margin: 0;">Browse 8 deployment targets — see naming rules, limits, and supported backends.</p>
-        </div>
-        <div class="walkthrough-step" style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; cursor: pointer;" onclick="goToTab('profiles')">
-          <div style="font-size: 1.3rem; margin-bottom: 4px;">2️⃣ Profiles</div>
-          <p style="color: var(--muted); font-size: 13px; margin: 0;">See the 4 demo profiles — K8s, Vercel, ECS, and one with intentional errors.</p>
-        </div>
-        <div class="walkthrough-step" style="background: var(--bg); border: 1px solid var(--accent); border-radius: 8px; padding: 14px; cursor: pointer;" onclick="goToTab('preview')">
-          <div style="font-size: 1.3rem; margin-bottom: 4px;">3️⃣ Preview ⭐</div>
-          <p style="color: var(--muted); font-size: 13px; margin: 0;">Instantly see validation + every export format. Try <strong>"saas-api-prod"</strong> (✅) then <strong>"broken-deploy"</strong> (❌).</p>
-        </div>
-        <div class="walkthrough-step" style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; cursor: pointer;" onclick="goToTab('validate')">
-          <div style="font-size: 1.3rem; margin-bottom: 4px;">4️⃣ Validate</div>
-          <p style="color: var(--muted); font-size: 13px; margin: 0;">Deep-dive into validation results with full rule-by-rule breakdown.</p>
-        </div>
-        <div class="walkthrough-step" style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; cursor: pointer;" onclick="goToTab('export')">
-          <div style="font-size: 1.3rem; margin-bottom: 4px;">5️⃣ Export</div>
-          <p style="color: var(--muted); font-size: 13px; margin: 0;">Pick a specific format and generate deployment-ready config to copy.</p>
-        </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn" onclick="loadDemos()">▶ Load Demos</button>
+        <button class="btn btn-sec btn-s" onclick="clearDemos()">🗑 Clear</button>
       </div>
     </div>
-
-    <div class="card">
-      <h2>What is This?</h2>
-      <p style="color: var(--muted); font-size: 14px; margin-bottom: 12px;">
-        A <strong>zero-trust</strong> deployment configuration router. Define your environment
-        variables per platform, validate them against platform-specific contracts, and export
-        deployment-ready config files — all from your browser. <strong>No secrets are ever stored or transmitted.</strong>
-      </p>
-      <p style="color: var(--muted); font-size: 14px;">
-        Profiles are saved in <code>localStorage</code>. Contract validation runs entirely client-side.
-        Export formats generate <em>references</em> to your secret manager, never actual values.
-      </p>
-    </div>
-    <div class="card">
-      <h2>Quick Start</h2>
-      <ol style="padding-left: 20px; color: var(--muted); font-size: 14px; line-height: 2;">
-        <li>Browse <strong>Platforms</strong> to see supported deployment targets.</li>
-        <li>Create a <strong>Profile</strong> — choose a platform, add env vars with secret refs.</li>
-        <li><strong>Validate</strong> your profile against the platform contract.</li>
-        <li><strong>Export</strong> deployment-ready config (env-file, k8s YAML, GitHub Actions, etc.).</li>
-        <li>Missing a platform? <strong>Submit</strong> a new contract via GitHub PR.</li>
-      </ol>
-    </div>
+    <div id="demo-msg" style="display:none; margin-top:10px;"></div>
   </div>
 
-  <!-- ═══ PLATFORMS ═══ -->
-  <div id="tab-platforms" class="tab">
-    <div class="flex-between" style="margin-bottom: 16px;">
-      <h2>Platform Contracts</h2>
-      <span style="color: var(--muted); font-size: 13px;" id="platform-summary"></span>
-    </div>
-    <div class="grid" id="platform-grid"></div>
-  </div>
-
-  <!-- ═══ PROFILES ═══ -->
-  <div id="tab-profiles" class="tab">
-    <div class="flex-between" style="margin-bottom: 16px;">
-      <h2>Profiles</h2>
-      <button class="btn" onclick="showCreateProfile()">+ New Profile</button>
-    </div>
-    <div id="profile-list"></div>
-    <div id="profile-form" class="card hidden">
-      <h3 id="profile-form-title">New Profile</h3>
-      <div class="form-row">
-        <label>Profile ID (slug)</label>
-        <input id="pf-id" placeholder="api-production">
-      </div>
-      <div class="form-row">
-        <label>Display Name</label>
-        <input id="pf-name" placeholder="API Production">
-      </div>
-      <div class="form-row-inline">
-        <div>
-          <label>Platform</label>
-          <select id="pf-platform"></select>
-        </div>
-        <div>
-          <label>Environment</label>
-          <select id="pf-env">
-            <option value="production">production</option>
-            <option value="staging">staging</option>
-            <option value="development">development</option>
-            <option value="test">test</option>
-          </select>
-        </div>
-      </div>
-      <div style="margin-top: 16px;">
-        <div class="flex-between">
-          <label style="margin: 0;">Environment Variables</label>
-          <button class="btn secondary" onclick="addVarRow()" style="padding: 4px 12px; font-size: 12px;">+ Add Var</button>
-        </div>
-        <div id="var-rows" style="margin-top: 8px;"></div>
-      </div>
-      <div style="margin-top: 16px; display: flex; gap: 8px;">
-        <button class="btn success" onclick="saveProfile()">Save Profile</button>
-        <button class="btn secondary" onclick="cancelProfileForm()">Cancel</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══ PREVIEW ═══ -->
-  <div id="tab-preview" class="tab">
-    <div class="card">
-      <h2>👁️ Profile Preview</h2>
-      <p style="color: var(--muted); font-size: 13px; margin-bottom: 12px;">
-        Select a profile to instantly see its validation status and every export format — no clicks required.
-      </p>
-      <div class="form-row">
-        <label>Profile</label>
-        <select id="prev-profile" onchange="renderPreview()"></select>
-      </div>
-    </div>
-
-    <!-- Preview: Summary Card -->
-    <div id="preview-summary"></div>
-
-    <!-- Preview: Validation Badge -->
-    <div id="preview-validation"></div>
-
-    <!-- Preview: All Exports -->
-    <div id="preview-exports"></div>
-  </div>
-
-  <!-- ═══ VALIDATE ═══ -->
-  <div id="tab-validate" class="tab">
-    <div class="card">
-      <h2>Validate Profile</h2>
-      <div class="form-row">
+  <!-- Profile Selector -->
+  <div class="card">
+    <div class="flex-b" style="flex-direction:row; align-items:end; flex-wrap:wrap; gap:10px;">
+      <div style="flex:1; min-width:200px;">
         <label>Select Profile</label>
-        <select id="val-profile"></select>
+        <select id="ov-profile" onchange="renderOverview()"></select>
       </div>
-      <button class="btn" onclick="runValidation()" style="margin-top: 8px;">Run Validation</button>
+      <div style="display:flex; gap:6px;">
+        <button class="btn btn-s" onclick="goTo('profiles')">+ New Profile</button>
+      </div>
     </div>
-    <div id="validation-result"></div>
   </div>
 
-  <!-- ═══ EXPORT ═══ -->
-  <div id="tab-export" class="tab">
-    <div class="card">
-      <h2>Export Configuration</h2>
-      <div class="form-row-inline">
-        <div>
-          <label>Profile</label>
-          <select id="exp-profile" onchange="updateExportFormats()"></select>
-        </div>
-        <div>
-          <label>Format</label>
-          <select id="exp-format"></select>
-        </div>
-      </div>
-      <button class="btn" onclick="runExport()" style="margin-top: 12px;">Generate Export</button>
-    </div>
-    <div id="export-result"></div>
-  </div>
-
-  <!-- ═══ SUBMIT CONTRACT ═══ -->
-  <div id="tab-submit" class="tab">
-    <div class="card">
-      <h2>Submit a New Platform Contract</h2>
-      <p style="color: var(--muted); font-size: 13px; margin-bottom: 16px;">
-        Missing a platform? Submit a new contract and it will be reviewed via GitHub PR.
-        You'll get a PR URL to track progress.
+  <!-- Live Output Area -->
+  <div id="ov-out">
+    <div class="card"><div class="empty">
+      <div style="font-size:2rem; margin-bottom:8px;">👆</div>
+      <p>Select a profile above — or load demos to get started.</p>
+      <p class="muted" style="font-size:12px; margin-top:6px;">
+        No server needed. Validation + export runs entirely in your browser.
       </p>
-      <div class="form-row">
-        <label>Your GitHub Username</label>
-        <input id="sub-user" placeholder="octocat">
-      </div>
-      <div class="form-row">
-        <label>GitHub Personal Access Token <span style="color: var(--muted);">(needs <code>repo</code> scope)</span></label>
-        <input id="sub-token" type="password" placeholder="ghp_xxxxx">
-      </div>
-      <div class="form-row">
-        <label>Contract JSON</label>
-        <textarea id="sub-json" rows="14" placeholder='Paste contract JSON matching the schema...'></textarea>
-      </div>
-      <div class="form-row">
-        <label>Notes (optional)</label>
-        <textarea id="sub-notes" rows="3" placeholder="Why this platform should be added..."></textarea>
-      </div>
-      <button class="btn" onclick="submitContract()">Submit via GitHub PR</button>
-    </div>
-    <div id="submit-result"></div>
+    </div></div>
   </div>
+
+  <!-- Platforms Reference (collapsible) -->
+  <div class="card">
+    <button class="collapse-toggle" onclick="togglePlatforms()">
+      📋 <span id="plat-toggle-label">Show Platform Contracts</span> (<span id="plat-count">0</span>)
+    </button>
+    <div class="collapse-body" id="plat-body">
+      <div class="pgrid" id="plat-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     PAGE: PROFILES — Create / edit / delete profiles.
+     ═══════════════════════════════════════════════════════════════════ -->
+<div id="pg-profiles" class="page">
+  <div class="flex-b" style="margin-bottom:14px; flex-direction:row;">
+    <h2>Profiles</h2>
+    <button class="btn btn-s" onclick="showCreateProfile()">+ New Profile</button>
+  </div>
+
+  <div id="profile-list"></div>
+
+  <!-- Profile Form -->
+  <div id="profile-form" class="card hidden">
+    <h3 id="pf-title">New Profile</h3>
+    <div class="form-row">
+      <label>Profile ID (slug)</label>
+      <input id="pf-id" placeholder="api-production">
+    </div>
+    <div class="form-row">
+      <label>Display Name</label>
+      <input id="pf-name" placeholder="API Production">
+    </div>
+    <div class="form-row-inline">
+      <div><label>Platform</label><select id="pf-platform"></select></div>
+      <div><label>Environment</label>
+        <select id="pf-env">
+          <option value="production">production</option>
+          <option value="staging">staging</option>
+          <option value="development">development</option>
+          <option value="test">test</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:14px;">
+      <div class="flex-b" style="flex-direction:row;">
+        <label style="margin:0;">Environment Variables</label>
+        <button class="btn btn-sec btn-s" onclick="addVarRow()">+ Add Var</button>
+      </div>
+      <div id="var-rows" style="margin-top:6px;"></div>
+    </div>
+    <div style="margin-top:14px; display:flex; gap:8px;">
+      <button class="btn btn-ok" onclick="saveProfile()">Save Profile</button>
+      <button class="btn btn-sec" onclick="cancelForm()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     PAGE: CONTRIBUTE — Submit new platform contracts.
+     ═══════════════════════════════════════════════════════════════════ -->
+<div id="pg-contribute" class="page">
+  <div class="card">
+    <h2>Submit a New Platform Contract</h2>
+    <p class="muted" style="font-size:12px; margin-bottom:14px;">
+      Missing a platform? Submit a new contract and it will be reviewed via GitHub PR.
+    </p>
+    <div class="form-row">
+      <label>Your GitHub Username</label>
+      <input id="sub-user" placeholder="octocat">
+    </div>
+    <div class="form-row">
+      <label>GitHub Personal Access Token <span class="muted">(needs <code>repo</code> scope)</span></label>
+      <input id="sub-token" type="password" placeholder="ghp_xxxxx">
+    </div>
+    <div class="form-row">
+      <label>Contract JSON</label>
+      <textarea id="sub-json" rows="12" placeholder='Paste contract JSON matching the schema...'></textarea>
+    </div>
+    <div class="form-row">
+      <label>Notes (optional)</label>
+      <textarea id="sub-notes" rows="2" placeholder="Why this platform should be added..."></textarea>
+    </div>
+    <button class="btn" onclick="submitContract()">Submit via GitHub PR</button>
+  </div>
+  <div id="submit-result"></div>
+</div>
+
 </main>
 
 <footer>
-  Zero-Trust Deploy Config — a <a href="https://github.com/orchestrate-solutions/codeupipe" style="color: var(--accent);">codeupipe</a> prototype.
+  Zero-Trust Deploy Config — a <a href="https://github.com/orchestrate-solutions/codeupipe" style="color:var(--accent);">codeupipe</a> prototype.
   All validation runs client-side. No secrets are stored or transmitted.
 </footer>
 
@@ -425,9 +355,8 @@
 /* ══════════════════════════════════════════════════════════════════════
    STATE
    ══════════════════════════════════════════════════════════════════════ */
-let contracts = {};   // id → contract object
-let profiles  = {};   // id → profile object (from localStorage)
-
+let contracts = {};
+let profiles = {};
 const STORAGE_KEY = "ztdc_profiles";
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -437,83 +366,77 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupNav();
   loadProfilesFromStorage();
   await loadContracts();
-  renderDashboard();
-  renderPlatforms();
-  renderProfiles();
-  populateSelects();
-
-  // If demo profiles are present from a previous session, show the walkthrough
-  const hasDemos = Object.keys(DEMO_PROFILES).some(id => profiles[id]);
-  if (hasDemos) {
-    document.getElementById("walkthrough-card").style.display = "block";
+  refreshAll();
+  // Show demo banner prominently if no profiles
+  if (Object.keys(profiles).length === 0) {
+    document.getElementById("demo-banner").style.borderColor = "var(--accent)";
   }
 });
 
-/* ── Navigation ────────────────────────────────────────────────────── */
 function setupNav() {
   document.querySelectorAll("#nav button").forEach(btn => {
     btn.addEventListener("click", () => {
       document.querySelectorAll("#nav button").forEach(b => b.classList.remove("active"));
-      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
       btn.classList.add("active");
-      document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
-      // Refresh selects when switching tabs
-      populateSelects();
-      // Auto-render preview when switching to it
-      if (btn.dataset.tab === "preview") renderPreview();
+      document.getElementById("pg-" + btn.dataset.page).classList.add("active");
+      refreshAll();
     });
   });
 }
 
+function goTo(page) {
+  document.querySelectorAll("#nav button").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  const btn = document.querySelector(`#nav button[data-page="${page}"]`);
+  if (btn) btn.classList.add("active");
+  document.getElementById("pg-" + page).classList.add("active");
+  refreshAll();
+}
+
+function refreshAll() {
+  populateSelects();
+  renderProfiles();
+  renderPlatforms();
+  updateHeaderMeta();
+  renderOverview();
+}
+
+function updateHeaderMeta() {
+  document.getElementById("hdr-contracts").textContent = Object.keys(contracts).length;
+  document.getElementById("hdr-profiles").textContent = Object.keys(profiles).length;
+}
+
 /* ══════════════════════════════════════════════════════════════════════
-   CONTRACT LOADING (static JSON)
+   CONTRACT LOADING
    ══════════════════════════════════════════════════════════════════════ */
 async function loadContracts() {
   try {
-    // Determine base URL for contracts — works on GH Pages and local
     const base = getContractsBaseUrl();
     const indexResp = await fetch(base + "/index.json");
-    if (!indexResp.ok) throw new Error("Failed to load contracts/index.json");
+    if (!indexResp.ok) throw new Error("Failed to load index.json");
     const index = await indexResp.json();
-
     const fetches = index.contracts.map(async (id) => {
       const resp = await fetch(base + "/" + id + ".json");
-      if (resp.ok) {
-        const data = await resp.json();
-        contracts[data.id] = normalizeContract(data);
-      }
+      if (resp.ok) { const d = await resp.json(); contracts[d.id] = norm(d); }
     });
     await Promise.all(fetches);
-  } catch (err) {
-    console.error("Contract loading error:", err);
-  }
-  document.getElementById("contract-count").textContent = Object.keys(contracts).length;
+  } catch (err) { console.error("Contract load error:", err); }
 }
 
 function getContractsBaseUrl() {
-  // Works for: GH Pages, local http server, file:// protocol
-  // index.html and contracts/ are always siblings at the same level
   const loc = window.location;
   if (loc.protocol === "file:") {
-    // When opened as a local file, resolve relative to the HTML file
-    const dir = loc.pathname.substring(0, loc.pathname.lastIndexOf("/"));
-    return dir + "/contracts";
+    return loc.pathname.substring(0, loc.pathname.lastIndexOf("/")) + "/contracts";
   }
-  // HTTP: strip trailing /index.html or / to get the directory, then append /contracts
-  const base = loc.pathname.replace(/\/index\.html$/i, "").replace(/\/+$/, "");
-  return base + "/contracts";
+  return loc.pathname.replace(/\/index\.html$/i, "").replace(/\/+$/, "") + "/contracts";
 }
 
-function normalizeContract(d) {
-  const naming = d.naming || {};
-  const limits = d.limits || {};
+function norm(d) {
+  const naming = d.naming || {}, limits = d.limits || {};
   return {
-    id: d.id,
-    name: d.name,
-    category: d.category || "",
-    docs_url: d.docs_url || "",
-    required_vars: d.required_vars || [],
-    optional_vars: d.optional_vars || [],
+    id: d.id, name: d.name, category: d.category || "", docs_url: d.docs_url || "",
+    required_vars: d.required_vars || [], optional_vars: d.optional_vars || [],
     naming_pattern: naming.pattern || "^[a-zA-Z_][a-zA-Z0-9_]*$",
     naming_description: naming.description || "",
     forbidden_prefixes: naming.forbidden_prefixes || [],
@@ -529,301 +452,291 @@ function normalizeContract(d) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   PROFILE PERSISTENCE (localStorage)
+   PROFILE PERSISTENCE
    ══════════════════════════════════════════════════════════════════════ */
 function loadProfilesFromStorage() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    profiles = raw ? JSON.parse(raw) : {};
-  } catch { profiles = {}; }
-  updateProfileCount();
+  try { const r = localStorage.getItem(STORAGE_KEY); profiles = r ? JSON.parse(r) : {}; }
+  catch { profiles = {}; }
 }
 
-function saveProfilesToStorage() {
+function saveProfiles() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
-  updateProfileCount();
-}
-
-function updateProfileCount() {
-  const el = document.getElementById("profile-count");
-  if (el) el.textContent = Object.keys(profiles).length;
+  refreshAll();
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   VALIDATION ENGINE (mirrors Python filters)
+   VALIDATION ENGINE
    ══════════════════════════════════════════════════════════════════════ */
 function validate(profile, contract) {
-  const issues = [];
-  const checkedRules = [];
+  const issues = [], rules = [];
 
-  // 1. Required vars check
-  checkedRules.push("required-vars");
+  rules.push("required-vars");
   for (const req of contract.required_vars) {
-    const found = profile.vars.some(v => v.key === req);
-    if (!found) {
-      issues.push({ rule: "required-vars", severity: "error", key: req,
-        message: `Required variable '${req}' is missing for platform '${contract.id}'.`});
-    }
+    if (!profile.vars.some(v => v.key === req))
+      issues.push({ rule: "required-vars", sev: "error", key: req,
+        msg: `Required variable '${req}' is missing.` });
   }
 
-  // 2. Naming convention check
-  checkedRules.push("naming-convention");
-  let nameRegex;
-  try { nameRegex = new RegExp(contract.naming_pattern); } catch { nameRegex = null; }
+  rules.push("naming-convention");
+  let rx; try { rx = new RegExp(contract.naming_pattern); } catch { rx = null; }
   for (const v of profile.vars) {
-    if (nameRegex && !nameRegex.test(v.key)) {
-      issues.push({ rule: "naming-convention", severity: "error", key: v.key,
-        message: `Key '${v.key}' does not match platform naming rule: ${contract.naming_description || contract.naming_pattern}`});
-    }
-    for (const prefix of contract.forbidden_prefixes) {
-      if (v.key.startsWith(prefix)) {
-        issues.push({ rule: "naming-convention", severity: "error", key: v.key,
-          message: `Key '${v.key}' uses reserved prefix '${prefix}' on platform '${contract.id}'.`});
-      }
-    }
+    if (rx && !rx.test(v.key))
+      issues.push({ rule: "naming", sev: "error", key: v.key,
+        msg: `'${v.key}' violates naming rule: ${contract.naming_description || contract.naming_pattern}` });
+    for (const p of contract.forbidden_prefixes)
+      if (v.key.startsWith(p))
+        issues.push({ rule: "naming", sev: "error", key: v.key,
+          msg: `'${v.key}' uses reserved prefix '${p}'.` });
   }
 
-  // 3. Duplicate key check
-  checkedRules.push("duplicate-keys");
+  rules.push("duplicate-keys");
   const seen = {};
   for (const v of profile.vars) {
-    if (seen[v.key]) {
-      issues.push({ rule: "duplicate-keys", severity: "error", key: v.key,
-        message: `Duplicate key '${v.key}' in profile.`});
-    }
+    if (seen[v.key]) issues.push({ rule: "duplicates", sev: "error", key: v.key, msg: `Duplicate key '${v.key}'.` });
     seen[v.key] = true;
   }
 
-  // 4. Platform limits check
-  checkedRules.push("platform-limits");
-  if (contract.max_vars && profile.vars.length > contract.max_vars) {
-    issues.push({ rule: "platform-limits", severity: "error", key: "",
-      message: `Profile has ${profile.vars.length} vars, exceeding platform limit of ${contract.max_vars}.`});
-  }
+  rules.push("platform-limits");
+  if (contract.max_vars && profile.vars.length > contract.max_vars)
+    issues.push({ rule: "limits", sev: "error", key: "", msg: `${profile.vars.length} vars exceeds limit of ${contract.max_vars}.` });
   for (const v of profile.vars) {
-    if (contract.key_max_length && v.key.length > contract.key_max_length) {
-      issues.push({ rule: "platform-limits", severity: "error", key: v.key,
-        message: `Key '${v.key}' length (${v.key.length}) exceeds platform max (${contract.key_max_length}).`});
-    }
-    const refStr = `ref:${v.secret_ref.backend}:${v.secret_ref.path}`;
-    if (contract.value_max_length && refStr.length > contract.value_max_length) {
-      issues.push({ rule: "platform-limits", severity: "warning", key: v.key,
-        message: `Reference for '${v.key}' may exceed platform value limit (${contract.value_max_length}).`});
-    }
+    if (contract.key_max_length && v.key.length > contract.key_max_length)
+      issues.push({ rule: "limits", sev: "error", key: v.key, msg: `Key length (${v.key.length}) exceeds max (${contract.key_max_length}).` });
   }
-  // Total size warning
   if (contract.max_total_size) {
-    let totalSize = 0;
-    for (const v of profile.vars) {
-      totalSize += v.key.length + 1 + `ref:${v.secret_ref.backend}:${v.secret_ref.path}`.length;
-    }
-    if (totalSize > contract.max_total_size) {
-      issues.push({ rule: "platform-limits", severity: "warning", key: "",
-        message: `Estimated total env size (${totalSize} bytes) exceeds platform limit (${contract.max_total_size}).`});
-    }
+    let sz = 0;
+    for (const v of profile.vars) sz += v.key.length + 1 + `ref:${v.secret_ref.backend}:${v.secret_ref.path}`.length;
+    if (sz > contract.max_total_size)
+      issues.push({ rule: "limits", sev: "warning", key: "", msg: `Total env size (~${sz}B) exceeds limit (${contract.max_total_size}B).` });
   }
 
-  // 5. Backend compatibility check
-  checkedRules.push("backend-compat");
+  rules.push("backend-compat");
   if (contract.secret_backends.length > 0) {
-    for (const v of profile.vars) {
-      if (!contract.secret_backends.includes(v.secret_ref.backend)) {
-        issues.push({ rule: "backend-compat", severity: "error", key: v.key,
-          message: `Secret backend '${v.secret_ref.backend}' for '${v.key}' is not compatible with platform '${contract.id}'. Supported: ${contract.secret_backends.join(", ")}`});
-      }
-    }
+    for (const v of profile.vars)
+      if (!contract.secret_backends.includes(v.secret_ref.backend))
+        issues.push({ rule: "backend", sev: "error", key: v.key,
+          msg: `Backend '${v.secret_ref.backend}' not supported. Use: ${contract.secret_backends.join(", ")}` });
   }
 
-  // 6. Format check
-  checkedRules.push("format-check");
-  // (format validation is implicitly done by the UI dropdowns)
-
-  const hasErrors = issues.some(i => i.severity === "error");
-  return {
-    profile_id: profile.id,
-    platform_id: contract.id,
-    valid: !hasErrors,
-    error_count: issues.filter(i => i.severity === "error").length,
-    warning_count: issues.filter(i => i.severity === "warning").length,
-    issues,
-    checked_rules: checkedRules,
-  };
+  const errs = issues.filter(i => i.sev === "error").length;
+  const warns = issues.filter(i => i.sev === "warning").length;
+  return { valid: errs === 0, errors: errs, warnings: warns, issues, rules };
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   EXPORT FORMATTERS (mirrors Python exporters)
+   EXPORT FORMATTERS
    ══════════════════════════════════════════════════════════════════════ */
-const FORMATTERS = {
-  "env-file": exportEnvFile,
-  "docker-compose-yaml": exportDockerComposeYaml,
-  "github-actions-yaml": exportGithubActionsYaml,
-  "k8s-configmap-yaml": exportK8sConfigmapYaml,
-  "k8s-secret-yaml": exportK8sSecretYaml,
-  "ecs-task-def-json": exportEcsTaskDefJson,
-  "lambda-env-json": exportLambdaEnvJson,
+const FMT = {
+  "env-file": fmtEnv, "docker-compose-yaml": fmtDockerCompose,
+  "github-actions-yaml": fmtGithubActions, "k8s-configmap-yaml": fmtK8sCM,
+  "k8s-secret-yaml": fmtK8sSecret, "ecs-task-def-json": fmtEcs, "lambda-env-json": fmtLambda,
 };
 
-function sortedVars(profile) {
-  return [...profile.vars].sort((a, b) => a.key.localeCompare(b.key));
+function sv(p) { return [...p.vars].sort((a,b) => a.key.localeCompare(b.key)); }
+
+function fmtEnv(p) {
+  const h = [`# Profile: ${p.name} (${p.platform})`, `# Environment: ${p.environment}`, "# Values are secret references, not actual secrets", ""];
+  for (const v of sv(p)) { const r = v.secret_ref; h.push(`${v.key}=ref:${r.backend}:${r.path}${r.version ? "@"+r.version : ""}`); }
+  return h.join("\n") + "\n";
 }
 
-function exportEnvFile(profile) {
-  const lines = [
-    `# Profile: ${profile.name} (${profile.platform})`,
-    `# Environment: ${profile.environment}`,
-    "# Zero-trust: values are secret references, not actual secrets",
-    "",
-  ];
-  for (const v of sortedVars(profile)) {
-    const ref = v.secret_ref;
-    const ver = ref.version ? `@${ref.version}` : "";
-    lines.push(`${v.key}=ref:${ref.backend}:${ref.path}${ver}`);
+function fmtDockerCompose(p) {
+  const h = ["# Generated by zero-trust-deploy-config", `# Profile: ${p.name} (${p.environment})`, "services:", `  ${p.id}:`, "    environment:"];
+  for (const v of sv(p)) h.push(`      - ${v.key}=\${{ ${v.key} }}`);
+  h.push("", "    env_file:", `      - .env.${p.environment}`);
+  return h.join("\n") + "\n";
+}
+
+function fmtGithubActions(p) {
+  const h = ["# Generated by zero-trust-deploy-config", `# Profile: ${p.name} (${p.environment})`, "env:"];
+  for (const v of sv(p)) h.push(`  ${v.key}: \${{ secrets.${v.key} }}`);
+  return h.join("\n") + "\n";
+}
+
+function fmtK8sCM(p) {
+  const h = ["# Generated by zero-trust-deploy-config", "apiVersion: v1", "kind: ConfigMap", "metadata:", `  name: ${p.id}-config`, "data:"];
+  for (const v of sv(p)) if (!v.required) h.push(`  ${v.key}: "ref:${v.secret_ref.backend}:${v.secret_ref.path}"`);
+  return h.join("\n") + "\n";
+}
+
+function fmtK8sSecret(p) {
+  const h = ["# Generated by zero-trust-deploy-config", "# WARNING: populate from your secret manager before applying", "apiVersion: v1", "kind: Secret", "metadata:", `  name: ${p.id}-secrets`, "type: Opaque", "stringData:"];
+  for (const v of sv(p)) if (v.required) h.push(`  ${v.key}: "<resolve from ${v.secret_ref.backend}:${v.secret_ref.path}>"`);
+  return h.join("\n") + "\n";
+}
+
+function fmtEcs(p) {
+  const env = [], sec = [];
+  for (const v of sv(p)) {
+    if (["aws-ssm","aws-secrets-manager"].includes(v.secret_ref.backend))
+      sec.push({ name: v.key, valueFrom: v.secret_ref.path });
+    else env.push({ name: v.key, value: `ref:${v.secret_ref.backend}:${v.secret_ref.path}` });
   }
-  return lines.join("\n") + "\n";
+  return JSON.stringify({ _comment: `Profile: ${p.id}`, environment: env, secrets: sec }, null, 2) + "\n";
 }
 
-function exportDockerComposeYaml(profile) {
-  const lines = [
-    "# Generated by zero-trust-deploy-config",
-    `# Profile: ${profile.name} (${profile.environment})`,
-    "services:",
-    `  ${profile.id}:`,
-    "    environment:",
-  ];
-  for (const v of sortedVars(profile)) {
-    lines.push(`      - ${v.key}=\${{ ${v.key} }}`);
-  }
-  lines.push("");
-  lines.push("    # Source secrets from .env file or secret manager");
-  lines.push("    env_file:");
-  lines.push(`      - .env.${profile.environment}`);
-  return lines.join("\n") + "\n";
-}
-
-function exportGithubActionsYaml(profile) {
-  const lines = [
-    "# Generated by zero-trust-deploy-config",
-    `# Profile: ${profile.name} (${profile.environment})`,
-    "env:",
-  ];
-  for (const v of sortedVars(profile)) {
-    lines.push(`  ${v.key}: \${{ secrets.${v.key} }}`);
-  }
-  return lines.join("\n") + "\n";
-}
-
-function exportK8sConfigmapYaml(profile) {
-  const lines = [
-    "# Generated by zero-trust-deploy-config",
-    `# Profile: ${profile.name} (${profile.environment})`,
-    "apiVersion: v1",
-    "kind: ConfigMap",
-    "metadata:",
-    `  name: ${profile.id}-config`,
-    "data:",
-  ];
-  for (const v of sortedVars(profile)) {
-    if (!v.required) {
-      lines.push(`  ${v.key}: "ref:${v.secret_ref.backend}:${v.secret_ref.path}"`);
-    }
-  }
-  return lines.join("\n") + "\n";
-}
-
-function exportK8sSecretYaml(profile) {
-  const lines = [
-    "# Generated by zero-trust-deploy-config",
-    `# Profile: ${profile.name} (${profile.environment})`,
-    "# WARNING: populate stringData values from your secret manager before applying",
-    "apiVersion: v1",
-    "kind: Secret",
-    "metadata:",
-    `  name: ${profile.id}-secrets`,
-    "type: Opaque",
-    "stringData:",
-  ];
-  for (const v of sortedVars(profile)) {
-    if (v.required) {
-      lines.push(`  ${v.key}: "<resolve from ${v.secret_ref.backend}:${v.secret_ref.path}>"`);
-    }
-  }
-  return lines.join("\n") + "\n";
-}
-
-function exportEcsTaskDefJson(profile) {
-  const env = [], secrets = [];
-  for (const v of sortedVars(profile)) {
-    if (["aws-ssm", "aws-secrets-manager"].includes(v.secret_ref.backend)) {
-      secrets.push({ name: v.key, valueFrom: v.secret_ref.path });
-    } else {
-      env.push({ name: v.key, value: `ref:${v.secret_ref.backend}:${v.secret_ref.path}` });
-    }
-  }
-  return JSON.stringify({
-    _comment: `Generated by zero-trust-deploy-config for profile ${profile.id}`,
-    environment: env,
-    secrets: secrets,
-  }, null, 2) + "\n";
-}
-
-function exportLambdaEnvJson(profile) {
+function fmtLambda(p) {
   const vars = {};
-  for (const v of sortedVars(profile)) {
-    vars[v.key] = `ref:${v.secret_ref.backend}:${v.secret_ref.path}`;
-  }
-  return JSON.stringify({
-    _comment: `Generated by zero-trust-deploy-config for profile ${profile.id}`,
-    Variables: vars,
-  }, null, 2) + "\n";
+  for (const v of sv(p)) vars[v.key] = `ref:${v.secret_ref.backend}:${v.secret_ref.path}`;
+  return JSON.stringify({ _comment: `Profile: ${p.id}`, Variables: vars }, null, 2) + "\n";
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   RENDER: DASHBOARD
+   RENDER: OVERVIEW
    ══════════════════════════════════════════════════════════════════════ */
-function renderDashboard() {
-  const nContracts = Object.keys(contracts).length;
-  const nProfiles = Object.keys(profiles).length;
-  const categories = [...new Set(Object.values(contracts).map(c => c.category))];
-  const totalFormats = [...new Set(Object.values(contracts).flatMap(c => c.export_formats))].length;
+function renderOverview() {
+  const pid = document.getElementById("ov-profile").value;
+  const p = profiles[pid];
+  const out = document.getElementById("ov-out");
 
-  document.getElementById("stats").innerHTML = `
-    <div class="stat"><div class="value">${nContracts}</div><div class="label">Platform Contracts</div></div>
-    <div class="stat"><div class="value">${nProfiles}</div><div class="label">Saved Profiles</div></div>
-    <div class="stat"><div class="value">${categories.length}</div><div class="label">Categories</div></div>
-    <div class="stat"><div class="value">${totalFormats}</div><div class="label">Export Formats</div></div>
-  `;
+  if (!p) {
+    out.innerHTML = `<div class="card"><div class="empty">
+      <div style="font-size:2rem; margin-bottom:8px;">👆</div>
+      <p>Select a profile above — or load demos to get started.</p>
+      <p class="muted" style="font-size:12px; margin-top:6px;">No server needed. Validation + export runs entirely in your browser.</p>
+    </div></div>`;
+    return;
+  }
+
+  const c = contracts[p.platform] || {};
+  const cName = c.name || p.platform;
+  const req = p.vars.filter(v => v.required).length;
+  const opt = p.vars.filter(v => !v.required).length;
+  const backs = [...new Set(p.vars.map(v => v.secret_ref.backend))];
+
+  let html = "";
+
+  // ── Summary ──
+  html += `<div class="card">
+    <div class="flex-b" style="flex-direction:row; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+      <h3 style="margin:0;">${esc(p.name)}</h3>
+      <span class="muted" style="font-size:12px;">${esc(p.id)} · ${esc(p.environment)}</span>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="sv" style="color:var(--accent); font-size:14px;">${esc(cName)}</div><div class="sl">Platform</div></div>
+      <div class="stat"><div class="sv">${p.vars.length}</div><div class="sl">Total Vars</div></div>
+      <div class="stat"><div class="sv" style="color:var(--warn);">${req}</div><div class="sl">Required</div></div>
+      <div class="stat"><div class="sv">${opt}</div><div class="sl">Optional</div></div>
+      <div class="stat"><div class="sv">${backs.length}</div><div class="sl">Backends</div></div>
+    </div>
+    <div>${backs.map(b => `<span class="tag tag-i">${esc(b)}</span>`).join(" ")}</div>
+    <table style="margin-top:10px;">
+      <tr><th>Key</th><th>Backend</th><th>Path</th><th>Req</th></tr>
+      ${p.vars.map(v => `<tr>
+        <td><code>${esc(v.key)}</code></td>
+        <td><span class="tag tag-i">${esc(v.secret_ref.backend)}</span></td>
+        <td style="font-size:11px;">${esc(v.secret_ref.path)}</td>
+        <td>${v.required ? '<span class="tag tag-w">yes</span>' : '<span class="tag tag-i">no</span>'}</td>
+      </tr>`).join("")}
+    </table>
+  </div>`;
+
+  // ── Validation ──
+  if (c.id) {
+    const r = validate(p, c);
+    const cls = r.valid ? "rbox-ok" : "rbox-err";
+    const icon = r.valid ? "✅" : "❌";
+    const sum = r.valid ? "All checks passed — ready to deploy." : `${r.errors} error(s), ${r.warnings} warning(s)`;
+    let issHtml = "";
+    if (r.issues.length) {
+      issHtml = `<ul class="issues" style="margin-top:8px;">
+        ${r.issues.map(i => `<li>
+          <span class="tag ${i.sev === 'error' ? 'tag-e' : 'tag-w'}">${esc(i.sev)}</span>
+          <span class="tag tag-i">${esc(i.rule)}</span>
+          ${i.key ? `<code>${esc(i.key)}</code> — ` : ""}${esc(i.msg)}
+        </li>`).join("")}
+      </ul>`;
+    }
+    html += `<div class="${cls} rbox">
+      <div class="flex-b" style="flex-direction:row; align-items:center;">
+        <strong>${icon} Validation: ${r.valid ? "Pass" : "Fail"}</strong>
+        <span class="muted" style="font-size:11px;">${esc(sum)}</span>
+      </div>
+      ${issHtml}
+    </div>`;
+  }
+
+  // ── Exports ──
+  const fmts = c.export_formats ? [...new Set([...c.export_formats, "env-file"])] : ["env-file"];
+  const avail = fmts.filter(f => FMT[f]).sort();
+
+  if (avail.length) {
+    let tabs = `<div class="fmt-tabs" id="ov-fmt-tabs">`;
+    let panels = "";
+    avail.forEach((f, i) => {
+      const act = i === 0 ? " active" : "";
+      tabs += `<button class="${act}" data-f="${esc(f)}" onclick="switchFmt(this)">${esc(f)}</button>`;
+      panels += `<div class="fmt-panel${act}" data-f="${esc(f)}">
+        <div style="display:flex; justify-content:flex-end; padding:6px 10px 0;"><button class="cp" onclick="cpCode(this)">📋 Copy</button></div>
+        <pre style="margin-top:0; border-top:none; border-radius:0 0 var(--radius) var(--radius);"><code>${esc(FMT[f](p))}</code></pre>
+      </div>`;
+    });
+    tabs += `</div>`;
+
+    html += `<div class="card" style="padding:0; overflow:hidden;">
+      <div style="padding:12px 14px 0;">
+        <h3 style="margin-bottom:4px;">📄 Export Previews</h3>
+        <p class="muted" style="font-size:11px; margin-bottom:8px;">
+          ${avail.length} format${avail.length > 1 ? "s" : ""} — deployment-ready, just copy and use.
+        </p>
+      </div>
+      ${tabs}${panels}
+    </div>`;
+  }
+
+  out.innerHTML = html;
+}
+
+function switchFmt(btn) {
+  const f = btn.dataset.f;
+  btn.closest(".card").querySelectorAll(".fmt-tabs button").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  btn.closest(".card").querySelectorAll(".fmt-panel").forEach(p => p.classList.remove("active"));
+  const panel = btn.closest(".card").querySelector(`.fmt-panel[data-f="${f}"]`);
+  if (panel) panel.classList.add("active");
+}
+
+function cpCode(btn) {
+  const code = btn.closest(".fmt-panel").querySelector("code");
+  if (code) navigator.clipboard.writeText(code.textContent).then(() => {
+    btn.textContent = "✅ Copied!"; setTimeout(() => btn.textContent = "📋 Copy", 1500);
+  });
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   RENDER: PLATFORMS
+   RENDER: PLATFORMS (collapsible on Overview)
    ══════════════════════════════════════════════════════════════════════ */
 function renderPlatforms() {
-  const grid = document.getElementById("platform-grid");
+  const grid = document.getElementById("plat-grid");
   const ids = Object.keys(contracts).sort();
-  document.getElementById("platform-summary").textContent = `${ids.length} platforms loaded`;
+  document.getElementById("plat-count").textContent = ids.length;
 
   grid.innerHTML = ids.map(id => {
     const c = contracts[id];
-    return `
-      <div class="card">
-        <h3>${esc(c.name)}</h3>
-        <p style="font-size:13px; color:var(--muted); margin-bottom:10px;">${esc(c.notes)}</p>
-        <div style="margin-bottom:8px;">
-          <span class="tag info">${esc(c.category)}</span>
-          ${c.required_vars.length ? `<span class="tag warn">${c.required_vars.length} required vars</span>` : ""}
-          ${c.max_vars ? `<span class="tag info">max ${c.max_vars} vars</span>` : ""}
-        </div>
-        <table>
-          <tr><th>Naming</th><td style="font-size:12px;">${esc(c.naming_description || c.naming_pattern)}</td></tr>
-          ${c.forbidden_prefixes.length ? `<tr><th>Forbidden</th><td style="font-size:12px;">${c.forbidden_prefixes.map(p => `<code>${esc(p)}</code>`).join(", ")}</td></tr>` : ""}
-          <tr><th>Backends</th><td style="font-size:12px;">${c.secret_backends.map(b => `<code>${esc(b)}</code>`).join(", ")}</td></tr>
-          <tr><th>Formats</th><td style="font-size:12px;">${c.export_formats.map(f => `<span class="tag info">${esc(f)}</span>`).join(" ")}</td></tr>
-          ${c.key_max_length ? `<tr><th>Key Max</th><td>${c.key_max_length}</td></tr>` : ""}
-          ${c.max_total_size ? `<tr><th>Total Size</th><td>${c.max_total_size.toLocaleString()} bytes</td></tr>` : ""}
-        </table>
-        ${c.docs_url ? `<a href="${esc(c.docs_url)}" target="_blank" style="font-size:12px; color:var(--accent); display:block; margin-top:8px;">📖 Platform docs →</a>` : ""}
-      </div>`;
+    return `<div class="card" style="margin-bottom:0;">
+      <h3>${esc(c.name)}</h3>
+      <p class="muted" style="font-size:12px; margin-bottom:8px;">${esc(c.notes)}</p>
+      <div style="margin-bottom:6px;">
+        <span class="tag tag-i">${esc(c.category)}</span>
+        ${c.required_vars.length ? `<span class="tag tag-w">${c.required_vars.length} required</span>` : ""}
+        ${c.max_vars ? `<span class="tag tag-i">max ${c.max_vars}</span>` : ""}
+      </div>
+      <table>
+        <tr><th>Naming</th><td style="font-size:11px;">${esc(c.naming_description || c.naming_pattern)}</td></tr>
+        ${c.forbidden_prefixes.length ? `<tr><th>Forbidden</th><td style="font-size:11px;">${c.forbidden_prefixes.map(p => `<code>${esc(p)}</code>`).join(", ")}</td></tr>` : ""}
+        <tr><th>Backends</th><td style="font-size:11px;">${c.secret_backends.map(b => `<code>${esc(b)}</code>`).join(", ")}</td></tr>
+        <tr><th>Formats</th><td>${c.export_formats.map(f => `<span class="tag tag-i">${esc(f)}</span>`).join(" ")}</td></tr>
+      </table>
+      ${c.docs_url ? `<a href="${esc(c.docs_url)}" target="_blank" style="font-size:11px; color:var(--accent); display:block; margin-top:6px;">📖 Docs →</a>` : ""}
+    </div>`;
   }).join("");
+}
+
+function togglePlatforms() {
+  const body = document.getElementById("plat-body");
+  const label = document.getElementById("plat-toggle-label");
+  const isOpen = body.classList.toggle("open");
+  label.textContent = isOpen ? "Hide Platform Contracts" : "Show Platform Contracts";
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -832,109 +745,92 @@ function renderPlatforms() {
 function renderProfiles() {
   const list = document.getElementById("profile-list");
   const ids = Object.keys(profiles).sort();
-
-  if (ids.length === 0) {
+  if (!ids.length) {
     list.innerHTML = `<div class="empty">No profiles yet. Click <strong>+ New Profile</strong> to create one.</div>`;
     return;
   }
-
   list.innerHTML = ids.map(id => {
     const p = profiles[id];
-    const cName = (contracts[p.platform] || {}).name || p.platform;
-    return `
-      <div class="card">
-        <div class="flex-between">
-          <div>
-            <h3>${esc(p.name)}</h3>
-            <span style="font-size:12px; color:var(--muted);">${esc(p.id)} — ${esc(cName)} — ${esc(p.environment)}</span>
-          </div>
-          <div style="display:flex; gap:8px;">
-            <button class="btn secondary" onclick="editProfile('${esc(id)}')" style="padding:6px 12px; font-size:12px;">Edit</button>
-            <button class="btn danger" onclick="deleteProfile('${esc(id)}')" style="padding:6px 12px; font-size:12px;">Delete</button>
-          </div>
+    const cN = (contracts[p.platform] || {}).name || p.platform;
+    return `<div class="card">
+      <div class="flex-b" style="flex-direction:row; flex-wrap:wrap;">
+        <div>
+          <h3 style="margin:0;">${esc(p.name)}</h3>
+          <span class="muted" style="font-size:11px;">${esc(p.id)} — ${esc(cN)} — ${esc(p.environment)} — ${p.vars.length} vars</span>
         </div>
-        <table style="margin-top:10px;">
-          <tr><th>Key</th><th>Backend</th><th>Path</th><th>Required</th></tr>
-          ${p.vars.map(v => `
-            <tr>
-              <td><code>${esc(v.key)}</code></td>
-              <td><span class="tag info">${esc(v.secret_ref.backend)}</span></td>
-              <td style="font-size:12px;">${esc(v.secret_ref.path)}</td>
-              <td>${v.required ? '<span class="tag warn">yes</span>' : '<span class="tag info">no</span>'}</td>
-            </tr>`).join("")}
-        </table>
-      </div>`;
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-s btn-sec" onclick="viewInOverview('${esc(id)}')">👁 View</button>
+          <button class="btn btn-s btn-sec" onclick="editProfile('${esc(id)}')">Edit</button>
+          <button class="btn btn-s btn-err" onclick="deleteProfile('${esc(id)}')">Delete</button>
+        </div>
+      </div>
+    </div>`;
   }).join("");
 }
 
-/* ── Profile Form ──────────────────────────────────────────────────── */
-let editingProfileId = null;
+function viewInOverview(id) {
+  goTo("overview");
+  document.getElementById("ov-profile").value = id;
+  renderOverview();
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PROFILE FORM
+   ══════════════════════════════════════════════════════════════════════ */
+let editingId = null;
 
 function showCreateProfile() {
-  editingProfileId = null;
-  document.getElementById("profile-form-title").textContent = "New Profile";
-  document.getElementById("pf-id").value = "";
-  document.getElementById("pf-id").disabled = false;
+  editingId = null;
+  document.getElementById("pf-title").textContent = "New Profile";
+  document.getElementById("pf-id").value = ""; document.getElementById("pf-id").disabled = false;
   document.getElementById("pf-name").value = "";
-  document.getElementById("pf-platform").value = Object.keys(contracts)[0] || "";
+  populatePlatformSelect();
   document.getElementById("pf-env").value = "production";
   document.getElementById("var-rows").innerHTML = "";
   addVarRow();
   document.getElementById("profile-form").classList.remove("hidden");
-  populatePlatformSelect();
 }
 
 function editProfile(id) {
-  const p = profiles[id];
-  if (!p) return;
-  editingProfileId = id;
-  document.getElementById("profile-form-title").textContent = "Edit Profile";
-  document.getElementById("pf-id").value = p.id;
-  document.getElementById("pf-id").disabled = true;
+  const p = profiles[id]; if (!p) return;
+  editingId = id;
+  document.getElementById("pf-title").textContent = "Edit Profile";
+  document.getElementById("pf-id").value = p.id; document.getElementById("pf-id").disabled = true;
   document.getElementById("pf-name").value = p.name;
   populatePlatformSelect();
   document.getElementById("pf-platform").value = p.platform;
   document.getElementById("pf-env").value = p.environment;
   document.getElementById("var-rows").innerHTML = "";
-  for (const v of p.vars) {
-    addVarRow(v);
-  }
+  for (const v of p.vars) addVarRow(v);
   document.getElementById("profile-form").classList.remove("hidden");
 }
 
-function cancelProfileForm() {
-  document.getElementById("profile-form").classList.add("hidden");
-  editingProfileId = null;
-}
+function cancelForm() { document.getElementById("profile-form").classList.add("hidden"); editingId = null; }
 
 function populatePlatformSelect() {
-  const sel = document.getElementById("pf-platform");
-  sel.innerHTML = Object.keys(contracts).sort().map(id =>
-    `<option value="${esc(id)}">${esc(contracts[id].name)}</option>`
-  ).join("");
+  const s = document.getElementById("pf-platform");
+  s.innerHTML = Object.keys(contracts).sort().map(id => `<option value="${esc(id)}">${esc(contracts[id].name)}</option>`).join("");
 }
 
-function addVarRow(existing) {
-  const container = document.getElementById("var-rows");
-  const row = document.createElement("div");
-  row.className = "var-entry";
-  row.innerHTML = `
+function addVarRow(x) {
+  const c = document.getElementById("var-rows");
+  const r = document.createElement("div"); r.className = "var-entry";
+  r.innerHTML = `
     <div class="form-row-inline">
-      <div><label>Key</label><input class="vr-key" value="${esc((existing && existing.key) || "")}" placeholder="DATABASE_URL"></div>
-      <div><label>Backend</label><input class="vr-backend" value="${esc((existing && existing.secret_ref && existing.secret_ref.backend) || "")}" placeholder="aws-ssm"></div>
-      <div><label>Path</label><input class="vr-path" value="${esc((existing && existing.secret_ref && existing.secret_ref.path) || "")}" placeholder="prod/db-url"></div>
+      <div><label>Key</label><input class="vr-key" value="${esc((x&&x.key)||"")}" placeholder="DATABASE_URL"></div>
+      <div><label>Backend</label><input class="vr-bk" value="${esc((x&&x.secret_ref&&x.secret_ref.backend)||"")}" placeholder="aws-ssm"></div>
+      <div><label>Path</label><input class="vr-pa" value="${esc((x&&x.secret_ref&&x.secret_ref.path)||"")}" placeholder="prod/db-url"></div>
     </div>
-    <div class="form-row-inline" style="margin-top:6px;">
-      <div><label>Description</label><input class="vr-desc" value="${esc((existing && existing.description) || "")}" placeholder="Primary database connection"></div>
-      <div style="flex:0 0 120px;">
-        <label>Required</label>
-        <select class="vr-req"><option value="true" ${(!existing || existing.required !== false) ? "selected" : ""}>Yes</option><option value="false" ${(existing && existing.required === false) ? "selected" : ""}>No</option></select>
+    <div class="form-row-inline" style="margin-top:4px;">
+      <div><label>Description</label><input class="vr-ds" value="${esc((x&&x.description)||"")}" placeholder="Connection string"></div>
+      <div style="flex:0 0 100px;"><label>Required</label>
+        <select class="vr-rq"><option value="true" ${(!x||x.required!==false)?"selected":""}>Yes</option><option value="false" ${(x&&x.required===false)?"selected":""}>No</option></select>
       </div>
-      <div style="flex:0 0 80px; display:flex; align-items:end;">
-        <button class="btn danger" onclick="this.closest('.var-entry').remove()" style="padding:6px 12px; font-size:12px;">✕</button>
+      <div style="flex:0 0 50px; display:flex; align-items:end;">
+        <button class="btn btn-s btn-err" onclick="this.closest('.var-entry').remove()">✕</button>
       </div>
     </div>`;
-  container.appendChild(row);
+  c.appendChild(r);
 }
 
 function saveProfile() {
@@ -942,416 +838,175 @@ function saveProfile() {
   const name = document.getElementById("pf-name").value.trim();
   const platform = document.getElementById("pf-platform").value;
   const environment = document.getElementById("pf-env").value;
-
-  if (!id || !name || !platform) {
-    alert("Profile ID, Name, and Platform are required.");
-    return;
-  }
-
-  // Collect vars
+  if (!id || !name || !platform) { alert("ID, Name, and Platform are required."); return; }
   const vars = [];
   document.querySelectorAll("#var-rows .var-entry").forEach(row => {
     const key = row.querySelector(".vr-key").value.trim();
-    const backend = row.querySelector(".vr-backend").value.trim();
-    const path = row.querySelector(".vr-path").value.trim();
-    const desc = row.querySelector(".vr-desc").value.trim();
-    const req = row.querySelector(".vr-req").value === "true";
-    if (key && backend && path) {
-      vars.push({
-        key,
-        secret_ref: { backend, path, version: null },
-        description: desc,
-        required: req,
-      });
-    }
+    const bk = row.querySelector(".vr-bk").value.trim();
+    const pa = row.querySelector(".vr-pa").value.trim();
+    const ds = row.querySelector(".vr-ds").value.trim();
+    const rq = row.querySelector(".vr-rq").value === "true";
+    if (key && bk && pa) vars.push({ key, secret_ref: { backend: bk, path: pa, version: null }, description: ds, required: rq });
   });
-
   profiles[id] = { id, name, platform, environment, vars, metadata: {} };
-  saveProfilesToStorage();
-  cancelProfileForm();
-  renderProfiles();
-  renderDashboard();
-  populateSelects();
+  saveProfiles();
+  cancelForm();
 }
 
 function deleteProfile(id) {
-  if (!confirm(`Delete profile "${id}"?`)) return;
+  if (!confirm(`Delete "${id}"?`)) return;
   delete profiles[id];
-  saveProfilesToStorage();
-  renderProfiles();
-  renderDashboard();
-  populateSelects();
+  saveProfiles();
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   POPULATE DROPDOWNS
+   SELECTS
    ══════════════════════════════════════════════════════════════════════ */
 function populateSelects() {
-  const profileIds = Object.keys(profiles).sort();
-  const optionsHtml = profileIds.length
-    ? profileIds.map(id => `<option value="${esc(id)}">${esc(profiles[id].name)} (${esc(id)})</option>`).join("")
+  const ids = Object.keys(profiles).sort();
+  const html = ids.length
+    ? ids.map(id => `<option value="${esc(id)}">${esc(profiles[id].name)} (${esc(id)})</option>`).join("")
     : `<option value="">No profiles — create one first</option>`;
-
-  ["val-profile", "exp-profile", "prev-profile"].forEach(selId => {
-    const sel = document.getElementById(selId);
-    if (sel) sel.innerHTML = optionsHtml;
-  });
-  updateExportFormats();
-}
-
-function updateExportFormats() {
-  const sel = document.getElementById("exp-profile");
-  const fmtSel = document.getElementById("exp-format");
-  if (!sel || !fmtSel) return;
-
-  const profileId = sel.value;
-  const profile = profiles[profileId];
-  if (!profile) {
-    fmtSel.innerHTML = `<option value="">Select a profile first</option>`;
-    return;
-  }
-
-  const contract = contracts[profile.platform];
-  const formats = contract ? contract.export_formats : Object.keys(FORMATTERS);
-  // Also include generic formats that are always available
-  const allFormats = [...new Set([...formats, "env-file"])];
-
-  fmtSel.innerHTML = allFormats.sort().map(f =>
-    `<option value="${esc(f)}">${esc(f)}</option>`
-  ).join("");
+  const s = document.getElementById("ov-profile");
+  if (s) s.innerHTML = html;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   ACTIONS: PREVIEW
-   ══════════════════════════════════════════════════════════════════════ */
-function renderPreview() {
-  const profileId = document.getElementById("prev-profile").value;
-  const profile = profiles[profileId];
-  const summaryDiv = document.getElementById("preview-summary");
-  const validDiv = document.getElementById("preview-validation");
-  const exportsDiv = document.getElementById("preview-exports");
-
-  if (!profile) {
-    summaryDiv.innerHTML = "";
-    validDiv.innerHTML = "";
-    exportsDiv.innerHTML = `<div class="card"><div class="empty">Select a profile above to see its preview.</div></div>`;
-    return;
-  }
-
-  const contract = contracts[profile.platform] || {};
-  const contractName = contract.name || profile.platform;
-  const requiredCount = profile.vars.filter(v => v.required).length;
-  const optionalCount = profile.vars.filter(v => !v.required).length;
-  const backends = [...new Set(profile.vars.map(v => v.secret_ref.backend))];
-
-  // ── Summary Card ──
-  summaryDiv.innerHTML = `
-    <div class="card">
-      <h3 style="margin-bottom: 10px;">${esc(profile.name)}</h3>
-      <div class="preview-summary-grid">
-        <div class="preview-stat"><div class="pv-value" style="color:var(--accent);">${esc(contractName)}</div><div class="pv-label">Platform</div></div>
-        <div class="preview-stat"><div class="pv-value">${esc(profile.environment)}</div><div class="pv-label">Environment</div></div>
-        <div class="preview-stat"><div class="pv-value">${profile.vars.length}</div><div class="pv-label">Total Vars</div></div>
-        <div class="preview-stat"><div class="pv-value" style="color:var(--warn);">${requiredCount}</div><div class="pv-label">Required</div></div>
-        <div class="preview-stat"><div class="pv-value">${optionalCount}</div><div class="pv-label">Optional</div></div>
-        <div class="preview-stat"><div class="pv-value">${backends.length}</div><div class="pv-label">Backends</div></div>
-      </div>
-      <div style="margin-top: 4px;">
-        ${backends.map(b => `<span class="tag info">${esc(b)}</span>`).join(" ")}
-      </div>
-    </div>`;
-
-  // ── Validation Badge ──
-  if (contract.id) {
-    const result = validate(profile, contract);
-    const statusClass = result.valid ? "valid" : "invalid";
-    const icon = result.valid ? "✅" : "❌";
-    const summaryText = result.valid
-      ? "All checks passed — ready to deploy."
-      : `${result.error_count} error(s), ${result.warning_count} warning(s)`;
-
-    let issuesHtml = "";
-    if (result.issues.length) {
-      issuesHtml = `<ul class="issue-list" style="margin-top: 10px;">
-        ${result.issues.slice(0, 8).map(i => `
-          <li>
-            <span class="tag ${i.severity === 'error' ? 'error' : 'warn'}">${esc(i.severity)}</span>
-            <span class="tag info">${esc(i.rule)}</span>
-            ${i.key ? `<code>${esc(i.key)}</code> — ` : ""}
-            ${esc(i.message)}
-          </li>`).join("")}
-        ${result.issues.length > 8 ? `<li style="color:var(--muted);">...and ${result.issues.length - 8} more. See Validate tab for full details.</li>` : ""}
-      </ul>`;
-    }
-
-    validDiv.innerHTML = `
-      <div class="result-box ${statusClass}">
-        <div class="flex-between" style="flex-direction:row; align-items:center;">
-          <h3 style="margin:0;">${icon} Validation: ${result.valid ? "Pass" : "Fail"}</h3>
-          <span style="font-size:12px; color:var(--muted);">${esc(summaryText)}</span>
-        </div>
-        ${issuesHtml}
-      </div>`;
-  } else {
-    validDiv.innerHTML = `<div class="result-box" style="background:var(--surface); border:1px solid var(--border);">
-      <span style="color:var(--muted);">⚠️ No contract loaded for platform "${esc(profile.platform)}" — cannot validate.</span>
-    </div>`;
-  }
-
-  // ── All Exports ──
-  const formats = contract.export_formats ? [...new Set([...contract.export_formats, "env-file"])] : ["env-file"];
-  const availableFormats = formats.filter(f => FORMATTERS[f]).sort();
-
-  if (!availableFormats.length) {
-    exportsDiv.innerHTML = `<div class="card"><div class="empty">No export formats available for this platform.</div></div>`;
-    return;
-  }
-
-  let tabsHtml = `<div class="preview-format-tabs" id="preview-fmt-tabs">`;
-  let panelsHtml = "";
-  availableFormats.forEach((fmt, i) => {
-    const activeClass = i === 0 ? " active" : "";
-    tabsHtml += `<button class="${activeClass}" data-fmt="${esc(fmt)}" onclick="switchPreviewFormat(this)">${esc(fmt)}</button>`;
-    const output = FORMATTERS[fmt](profile);
-    panelsHtml += `
-      <div class="preview-code-panel${activeClass}" data-fmt="${esc(fmt)}">
-        <div style="display:flex; justify-content:flex-end; padding: 8px 12px 0;">
-          <button class="copy-btn" onclick="copyPreviewCode(this)">📋 Copy</button>
-        </div>
-        <pre style="margin-top:0; border-top:none; border-radius: 0 0 var(--radius) var(--radius);"><code>${esc(output)}</code></pre>
-      </div>`;
-  });
-  tabsHtml += `</div>`;
-
-  exportsDiv.innerHTML = `
-    <div class="card" style="padding:0; overflow:hidden;">
-      <div style="padding: 14px 16px 0;">
-        <h3 style="margin-bottom: 8px;">📄 Export Previews</h3>
-        <p style="font-size:12px; color:var(--muted); margin-bottom: 10px;">
-          ${availableFormats.length} format${availableFormats.length > 1 ? "s" : ""} available for ${esc(contractName)}.
-          These are deployment-ready — just copy and use.
-        </p>
-      </div>
-      ${tabsHtml}
-      ${panelsHtml}
-    </div>`;
-}
-
-function switchPreviewFormat(btn) {
-  const fmt = btn.dataset.fmt;
-  // Update tabs
-  btn.closest(".preview-format-tabs").querySelectorAll("button").forEach(b => b.classList.remove("active"));
-  btn.classList.add("active");
-  // Update panels
-  const container = document.getElementById("preview-exports");
-  container.querySelectorAll(".preview-code-panel").forEach(p => p.classList.remove("active"));
-  const panel = container.querySelector(`.preview-code-panel[data-fmt="${fmt}"]`);
-  if (panel) panel.classList.add("active");
-}
-
-function copyPreviewCode(btn) {
-  const pre = btn.closest(".preview-code-panel").querySelector("code");
-  if (pre) {
-    navigator.clipboard.writeText(pre.textContent).then(() => {
-      btn.textContent = "✅ Copied!";
-      setTimeout(() => btn.textContent = "📋 Copy", 1500);
-    });
-  }
-}
-
-/* ══════════════════════════════════════════════════════════════════════
-   ACTIONS: VALIDATE
-   ══════════════════════════════════════════════════════════════════════ */
-function runValidation() {
-  const profileId = document.getElementById("val-profile").value;
-  const profile = profiles[profileId];
-  if (!profile) { alert("Select a valid profile."); return; }
-
-  const contract = contracts[profile.platform];
-  if (!contract) { alert(`No contract found for platform '${profile.platform}'.`); return; }
-
-  const result = validate(profile, contract);
-  const resultDiv = document.getElementById("validation-result");
-
-  resultDiv.innerHTML = `
-    <div class="result-box ${result.valid ? 'valid' : 'invalid'}">
-      <div class="flex-between">
-        <h3>${result.valid ? '✅ Valid' : '❌ Invalid'}</h3>
-        <span style="font-size:13px; color:var(--muted);">
-          ${result.error_count} error(s), ${result.warning_count} warning(s) — ${result.checked_rules.length} rules checked
-        </span>
-      </div>
-      <p style="font-size:13px; color:var(--muted); margin-top:4px;">
-        Profile: <strong>${esc(profile.name)}</strong> → Platform: <strong>${esc(contract.name)}</strong>
-      </p>
-      ${result.issues.length ? `
-        <ul class="issue-list" style="margin-top:12px;">
-          ${result.issues.map(i => `
-            <li>
-              <span class="tag ${i.severity === 'error' ? 'error' : 'warn'}">${esc(i.severity)}</span>
-              <span class="tag info">${esc(i.rule)}</span>
-              ${i.key ? `<code>${esc(i.key)}</code> — ` : ""}
-              ${esc(i.message)}
-            </li>`).join("")}
-        </ul>` : `<p style="margin-top:8px; color:var(--success);">All checks passed — no issues found.</p>`}
-    </div>`;
-}
-
-/* ══════════════════════════════════════════════════════════════════════
-   ACTIONS: EXPORT
-   ══════════════════════════════════════════════════════════════════════ */
-function runExport() {
-  const profileId = document.getElementById("exp-profile").value;
-  const format = document.getElementById("exp-format").value;
-  const profile = profiles[profileId];
-  if (!profile) { alert("Select a valid profile."); return; }
-  if (!format) { alert("Select an export format."); return; }
-
-  const formatter = FORMATTERS[format];
-  if (!formatter) { alert(`Unknown format: ${format}`); return; }
-
-  const output = formatter(profile);
-  const resultDiv = document.getElementById("export-result");
-
-  resultDiv.innerHTML = `
-    <div class="card" style="margin-top:16px;">
-      <div class="flex-between">
-        <h3>${esc(format)}</h3>
-        <button class="copy-btn" onclick="copyExport()">📋 Copy</button>
-      </div>
-      <pre><code id="export-code">${esc(output)}</code></pre>
-    </div>`;
-}
-
-function copyExport() {
-  const code = document.getElementById("export-code");
-  if (code) {
-    navigator.clipboard.writeText(code.textContent).then(() => {
-      const btn = document.querySelector(".copy-btn");
-      if (btn) { btn.textContent = "✅ Copied!"; setTimeout(() => btn.textContent = "📋 Copy", 1500); }
-    });
-  }
-}
-
-/* ══════════════════════════════════════════════════════════════════════
-   ACTIONS: SUBMIT CONTRACT
+   SUBMIT CONTRACT
    ══════════════════════════════════════════════════════════════════════ */
 async function submitContract() {
   const user = document.getElementById("sub-user").value.trim();
   const token = document.getElementById("sub-token").value.trim();
   const jsonStr = document.getElementById("sub-json").value.trim();
   const notes = document.getElementById("sub-notes").value.trim();
-  const resultDiv = document.getElementById("submit-result");
-
-  if (!user || !token || !jsonStr) {
-    alert("Username, token, and contract JSON are required.");
+  const rd = document.getElementById("submit-result");
+  if (!user || !token || !jsonStr) { alert("Username, token, and JSON required."); return; }
+  let data; try { data = JSON.parse(jsonStr); } catch(e) { alert("Invalid JSON: " + e.message); return; }
+  const errs = schemaCheck(data);
+  if (errs.length) {
+    rd.innerHTML = `<div class="rbox rbox-err"><strong>❌ Schema Errors</strong><ul class="issues">${errs.map(e => `<li><span class="tag tag-e">error</span> ${esc(e)}</li>`).join("")}</ul></div>`;
     return;
   }
-
-  let contractData;
-  try { contractData = JSON.parse(jsonStr); } catch (e) {
-    alert("Invalid JSON: " + e.message);
-    return;
-  }
-
-  // Basic schema validation
-  const errors = validateContractSchema(contractData);
-  if (errors.length) {
-    resultDiv.innerHTML = `<div class="result-box invalid" style="margin-top:16px;">
-      <h3>❌ Schema Errors</h3>
-      <ul class="issue-list">${errors.map(e => `<li><span class="tag error">error</span> ${esc(e)}</li>`).join("")}</ul>
-    </div>`;
-    return;
-  }
-
-  // Submit via GitHub API
-  const repo = "orchestrate-solutions/zero-trust-deploy-config";
-  const branch = `contract/${contractData.id}-${Date.now()}`;
-  const filePath = `contracts/${contractData.id}.json`;
-  const commitMsg = `feat: add ${contractData.id} platform contract\n\nSubmitted by: ${user}\n${notes ? "Notes: " + notes : ""}`;
-
-  resultDiv.innerHTML = `<div class="card" style="margin-top:16px;"><p>⏳ Submitting...</p></div>`;
-
+  const repo = "JoshuaWink/zero-trust-deploy-config";
+  const branch = `contract/${data.id}-${Date.now()}`;
+  const fp = `contracts/${data.id}.json`;
+  rd.innerHTML = `<div class="card"><p>⏳ Submitting...</p></div>`;
   try {
-    // 1. Get default branch SHA
-    const repoResp = await ghApi(`repos/${repo}`, token);
-    const defaultBranch = repoResp.default_branch;
-    const refResp = await ghApi(`repos/${repo}/git/ref/heads/${defaultBranch}`, token);
-    const baseSha = refResp.object.sha;
-
-    // 2. Create branch
-    await ghApi(`repos/${repo}/git/refs`, token, "POST", {
-      ref: `refs/heads/${branch}`,
-      sha: baseSha,
+    const rr = await ghApi(`repos/${repo}`, token);
+    const ref = await ghApi(`repos/${repo}/git/ref/heads/${rr.default_branch}`, token);
+    await ghApi(`repos/${repo}/git/refs`, token, "POST", { ref: `refs/heads/${branch}`, sha: ref.object.sha });
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2) + "\n")));
+    await ghApi(`repos/${repo}/contents/${fp}`, token, "PUT", { message: `feat: add ${data.id} contract\n\nBy: ${user}`, content, branch });
+    const pr = await ghApi(`repos/${repo}/pulls`, token, "POST", {
+      title: `[contract] Add ${data.name || data.id}`, head: branch, base: rr.default_branch,
+      body: `## New Contract: ${data.name||data.id}\n\n**By:** @${user}\n**ID:** \`${data.id}\`\n\n${notes ? "### Notes\n"+notes : ""}\n\n---\n*Auto-submitted via dashboard.*`
     });
-
-    // 3. Create/update file
-    const content = btoa(unescape(encodeURIComponent(JSON.stringify(contractData, null, 2) + "\n")));
-    await ghApi(`repos/${repo}/contents/${filePath}`, token, "PUT", {
-      message: commitMsg,
-      content: content,
-      branch: branch,
-    });
-
-    // 4. Open PR
-    const prResp = await ghApi(`repos/${repo}/pulls`, token, "POST", {
-      title: `[contract] Add ${contractData.name || contractData.id}`,
-      head: branch,
-      base: defaultBranch,
-      body: `## New Platform Contract: ${contractData.name || contractData.id}\n\n**Submitted by:** @${user}\n**Platform ID:** \`${contractData.id}\`\n**Category:** ${contractData.category || "N/A"}\n\n${notes ? "### Notes\n" + notes : ""}\n\n---\n*Auto-submitted via Zero-Trust Deploy Config dashboard.*`,
-    });
-
-    resultDiv.innerHTML = `
-      <div class="result-box valid" style="margin-top:16px;">
-        <h3>✅ Contract Submitted!</h3>
-        <p style="margin-top:8px;">
-          PR #${prResp.number} created: <a href="${esc(prResp.html_url)}" target="_blank" style="color:var(--accent);">${esc(prResp.html_url)}</a>
-        </p>
-        <p style="font-size:13px; color:var(--muted); margin-top:4px;">
-          Track the review status on GitHub. Once merged, the new contract will appear automatically.
-        </p>
-      </div>`;
-  } catch (err) {
-    resultDiv.innerHTML = `<div class="result-box invalid" style="margin-top:16px;">
-      <h3>❌ Submission Failed</h3>
-      <p style="margin-top:8px; font-size:14px;">${esc(err.message)}</p>
-    </div>`;
+    rd.innerHTML = `<div class="rbox rbox-ok"><strong>✅ Submitted!</strong><p style="margin-top:6px;">PR #${pr.number}: <a href="${esc(pr.html_url)}" target="_blank" style="color:var(--accent);">${esc(pr.html_url)}</a></p></div>`;
+  } catch(e) {
+    rd.innerHTML = `<div class="rbox rbox-err"><strong>❌ Failed</strong><p style="margin-top:6px;">${esc(e.message)}</p></div>`;
   }
 }
 
 async function ghApi(path, token, method, body) {
-  method = method || "GET";
-  const opts = {
-    method,
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Accept": "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
-    },
-  };
-  if (body) {
-    opts.headers["Content-Type"] = "application/json";
-    opts.body = JSON.stringify(body);
-  }
-  const resp = await fetch(`https://api.github.com/${path}`, opts);
-  if (!resp.ok) {
-    const errData = await resp.json().catch(() => ({}));
-    throw new Error(`GitHub API ${resp.status}: ${errData.message || resp.statusText}`);
-  }
-  return resp.json();
+  const opts = { method: method || "GET", headers: { "Authorization": `Bearer ${token}`, "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" } };
+  if (body) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+  const r = await fetch(`https://api.github.com/${path}`, opts);
+  if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(`GitHub ${r.status}: ${e.message||r.statusText}`); }
+  return r.json();
 }
 
-function validateContractSchema(data) {
-  const errors = [];
-  if (!data.id || typeof data.id !== "string") errors.push("Missing or invalid 'id' (string required).");
-  if (!data.name || typeof data.name !== "string") errors.push("Missing or invalid 'name' (string required).");
-  if (!data.category || typeof data.category !== "string") errors.push("Missing or invalid 'category' (string required).");
-  if (!data.naming || typeof data.naming !== "object") errors.push("Missing 'naming' object.");
-  else if (!data.naming.pattern) errors.push("Missing 'naming.pattern' regex.");
-  if (!data.limits || typeof data.limits !== "object") errors.push("Missing 'limits' object.");
-  if (!Array.isArray(data.secret_backends) || data.secret_backends.length === 0) errors.push("'secret_backends' must be a non-empty array.");
-  if (!Array.isArray(data.export_formats) || data.export_formats.length === 0) errors.push("'export_formats' must be a non-empty array.");
-  return errors;
+function schemaCheck(d) {
+  const e = [];
+  if (!d.id || typeof d.id !== "string") e.push("Missing 'id'.");
+  if (!d.name || typeof d.name !== "string") e.push("Missing 'name'.");
+  if (!d.category || typeof d.category !== "string") e.push("Missing 'category'.");
+  if (!d.naming || typeof d.naming !== "object") e.push("Missing 'naming' object.");
+  else if (!d.naming.pattern) e.push("Missing 'naming.pattern'.");
+  if (!d.limits || typeof d.limits !== "object") e.push("Missing 'limits'.");
+  if (!Array.isArray(d.secret_backends) || !d.secret_backends.length) e.push("'secret_backends' must be non-empty array.");
+  if (!Array.isArray(d.export_formats) || !d.export_formats.length) e.push("'export_formats' must be non-empty array.");
+  return e;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   DEMO PROFILES
+   ══════════════════════════════════════════════════════════════════════ */
+const DEMOS = {
+  "saas-api-prod": {
+    id: "saas-api-prod", name: "SaaS API — Production", platform: "kubernetes", environment: "production",
+    vars: [
+      { key: "DATABASE_URL", secret_ref: { backend: "hashicorp-vault", path: "secret/prod/postgres-url", version: null }, description: "Primary Postgres connection", required: true },
+      { key: "REDIS_URL", secret_ref: { backend: "hashicorp-vault", path: "secret/prod/redis-url", version: null }, description: "Redis cache", required: true },
+      { key: "JWT_SECRET", secret_ref: { backend: "hashicorp-vault", path: "secret/prod/jwt-key", version: null }, description: "JWT signing key", required: true },
+      { key: "STRIPE_SECRET_KEY", secret_ref: { backend: "hashicorp-vault", path: "secret/prod/stripe-sk", version: null }, description: "Stripe API key", required: true },
+      { key: "SENDGRID_API_KEY", secret_ref: { backend: "hashicorp-vault", path: "secret/prod/sendgrid", version: null }, description: "Email API key", required: true },
+      { key: "S3_BUCKET", secret_ref: { backend: "aws-secrets-manager", path: "prod/s3-bucket", version: null }, description: "Upload bucket", required: false },
+      { key: "LOG_LEVEL", secret_ref: { backend: "k8s-secret", path: "prod-config/log-level", version: null }, description: "Log level", required: false },
+      { key: "CORS_ORIGINS", secret_ref: { backend: "k8s-secret", path: "prod-config/cors", version: null }, description: "CORS origins", required: false },
+    ], metadata: { demo: true },
+  },
+  "startup-frontend": {
+    id: "startup-frontend", name: "Startup Frontend — Vercel", platform: "vercel", environment: "production",
+    vars: [
+      { key: "NEXT_PUBLIC_API_URL", secret_ref: { backend: "vercel-secrets", path: "api-url-prod", version: null }, description: "Public API endpoint", required: true },
+      { key: "NEXT_PUBLIC_STRIPE_PK", secret_ref: { backend: "vercel-secrets", path: "stripe-pk", version: null }, description: "Stripe publishable key", required: true },
+      { key: "DATABASE_URL", secret_ref: { backend: "vercel-secrets", path: "neon-db-prod", version: null }, description: "Neon Postgres", required: true },
+      { key: "AUTH_SECRET", secret_ref: { backend: "vercel-secrets", path: "nextauth-secret", version: null }, description: "NextAuth encryption", required: true },
+      { key: "RESEND_API_KEY", secret_ref: { backend: "vercel-secrets", path: "resend-key", version: null }, description: "Email service", required: false },
+    ], metadata: { demo: true },
+  },
+  "ecs-worker": {
+    id: "ecs-worker", name: "Data Pipeline — ECS", platform: "aws-ecs", environment: "production",
+    vars: [
+      { key: "SQS_QUEUE_URL", secret_ref: { backend: "aws-ssm", path: "/prod/worker/sqs-url", version: null }, description: "SQS queue", required: true },
+      { key: "DATABASE_URL", secret_ref: { backend: "aws-secrets-manager", path: "prod/worker/db", version: null }, description: "RDS Postgres", required: true },
+      { key: "S3_OUTPUT_BUCKET", secret_ref: { backend: "aws-ssm", path: "/prod/worker/s3-out", version: null }, description: "Output bucket", required: true },
+      { key: "DATADOG_API_KEY", secret_ref: { backend: "aws-secrets-manager", path: "prod/datadog", version: null }, description: "Monitoring key", required: true },
+      { key: "WORKER_CONCURRENCY", secret_ref: { backend: "aws-ssm", path: "/prod/worker/concurrency", version: null }, description: "Thread count", required: false },
+      { key: "AWS_DEFAULT_REGION", secret_ref: { backend: "aws-ssm", path: "/prod/region", version: null }, description: "AWS region", required: false },
+    ], metadata: { demo: true },
+  },
+  "broken-deploy": {
+    id: "broken-deploy", name: "⚠️ Broken Deploy (Errors)", platform: "github-actions", environment: "staging",
+    vars: [
+      { key: "GITHUB_INTERNAL_TOKEN", secret_ref: { backend: "github-secrets", path: "internal-token", version: null }, description: "❌ Reserved GITHUB_ prefix", required: true },
+      { key: "db url", secret_ref: { backend: "github-secrets", path: "db-url", version: null }, description: "❌ Spaces in key name", required: true },
+      { key: "API_KEY", secret_ref: { backend: "hashicorp-vault", path: "staging/api-key", version: null }, description: "❌ Vault not supported", required: true },
+      { key: "VALID_SECRET", secret_ref: { backend: "github-secrets", path: "some-secret", version: null }, description: "✅ This one is fine", required: false },
+      { key: "API_KEY", secret_ref: { backend: "github-secrets", path: "duplicate", version: null }, description: "❌ Duplicate key", required: false },
+    ], metadata: { demo: true },
+  },
+};
+
+function loadDemos() {
+  let n = 0;
+  for (const [id, p] of Object.entries(DEMOS)) { if (!profiles[id]) { profiles[id] = JSON.parse(JSON.stringify(p)); n++; } }
+  saveProfiles();
+  const msg = document.getElementById("demo-msg");
+  msg.style.display = "block";
+  if (n > 0) {
+    msg.innerHTML = `<div style="background:#23863620; border:1px solid var(--success); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--success);">
+      ✅ Loaded ${n} demo profile${n>1?"s":""}! Select one above to see it in action.</div>`;
+    // Auto-select first demo
+    const sel = document.getElementById("ov-profile");
+    if (sel) { sel.value = "saas-api-prod"; renderOverview(); }
+  } else {
+    msg.innerHTML = `<div style="background:#1f6feb20; border:1px solid var(--accent); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--accent);">
+      Demos already loaded. Clear first to reload.</div>`;
+  }
+}
+
+function clearDemos() {
+  let n = 0;
+  for (const id of Object.keys(DEMOS)) { if (profiles[id]) { delete profiles[id]; n++; } }
+  saveProfiles();
+  const msg = document.getElementById("demo-msg");
+  if (n > 0) {
+    msg.style.display = "block";
+    msg.innerHTML = `<div style="background:#9e6a0320; border:1px solid var(--warn); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--warn);">
+      🗑 Removed ${n} demo${n>1?"s":""}. Custom profiles untouched.</div>`;
+    setTimeout(() => { msg.style.display = "none"; }, 3000);
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -1359,141 +1014,7 @@ function validateContractSchema(data) {
    ══════════════════════════════════════════════════════════════════════ */
 function esc(s) {
   if (s == null) return "";
-  const div = document.createElement("div");
-  div.textContent = String(s);
-  return div.innerHTML;
-}
-
-/* ══════════════════════════════════════════════════════════════════════
-   DEMO PROFILES
-   ══════════════════════════════════════════════════════════════════════ */
-const DEMO_PROFILES = {
-  "saas-api-prod": {
-    id: "saas-api-prod",
-    name: "SaaS API — Production",
-    platform: "kubernetes",
-    environment: "production",
-    vars: [
-      { key: "DATABASE_URL", secret_ref: { backend: "hashicorp-vault", path: "secret/prod/postgres-url", version: null }, description: "Primary Postgres connection string", required: true },
-      { key: "REDIS_URL", secret_ref: { backend: "hashicorp-vault", path: "secret/prod/redis-url", version: null }, description: "Redis cache connection", required: true },
-      { key: "JWT_SECRET", secret_ref: { backend: "hashicorp-vault", path: "secret/prod/jwt-signing-key", version: null }, description: "JWT token signing key", required: true },
-      { key: "STRIPE_SECRET_KEY", secret_ref: { backend: "hashicorp-vault", path: "secret/prod/stripe-sk", version: null }, description: "Stripe API secret key", required: true },
-      { key: "SENDGRID_API_KEY", secret_ref: { backend: "hashicorp-vault", path: "secret/prod/sendgrid-key", version: null }, description: "SendGrid email API key", required: true },
-      { key: "S3_BUCKET", secret_ref: { backend: "aws-secrets-manager", path: "prod/s3-uploads-bucket", version: null }, description: "Upload storage bucket name", required: false },
-      { key: "LOG_LEVEL", secret_ref: { backend: "k8s-secret", path: "prod-config/log-level", version: null }, description: "Application log level", required: false },
-      { key: "CORS_ORIGINS", secret_ref: { backend: "k8s-secret", path: "prod-config/cors-origins", version: null }, description: "Allowed CORS origins", required: false },
-    ],
-    metadata: { demo: true },
-  },
-  "startup-frontend": {
-    id: "startup-frontend",
-    name: "Startup Frontend — Vercel",
-    platform: "vercel",
-    environment: "production",
-    vars: [
-      { key: "NEXT_PUBLIC_API_URL", secret_ref: { backend: "vercel-secrets", path: "api-url-prod", version: null }, description: "Public API endpoint", required: true },
-      { key: "NEXT_PUBLIC_STRIPE_PK", secret_ref: { backend: "vercel-secrets", path: "stripe-pk-prod", version: null }, description: "Stripe publishable key (client-safe)", required: true },
-      { key: "DATABASE_URL", secret_ref: { backend: "vercel-secrets", path: "neon-db-prod", version: null }, description: "Neon Postgres connection for API routes", required: true },
-      { key: "AUTH_SECRET", secret_ref: { backend: "vercel-secrets", path: "nextauth-secret", version: null }, description: "NextAuth.js session encryption key", required: true },
-      { key: "RESEND_API_KEY", secret_ref: { backend: "vercel-secrets", path: "resend-key-prod", version: null }, description: "Resend email service API key", required: false },
-    ],
-    metadata: { demo: true },
-  },
-  "ecs-worker": {
-    id: "ecs-worker",
-    name: "Data Pipeline Worker — ECS",
-    platform: "aws-ecs",
-    environment: "production",
-    vars: [
-      { key: "SQS_QUEUE_URL", secret_ref: { backend: "aws-ssm", path: "/prod/worker/sqs-queue-url", version: null }, description: "SQS queue for job intake", required: true },
-      { key: "DATABASE_URL", secret_ref: { backend: "aws-secrets-manager", path: "prod/worker/db-connection", version: null }, description: "RDS Postgres connection string", required: true },
-      { key: "S3_OUTPUT_BUCKET", secret_ref: { backend: "aws-ssm", path: "/prod/worker/s3-output-bucket", version: null }, description: "S3 bucket for processed output", required: true },
-      { key: "DATADOG_API_KEY", secret_ref: { backend: "aws-secrets-manager", path: "prod/shared/datadog-key", version: null }, description: "Datadog monitoring API key", required: true },
-      { key: "WORKER_CONCURRENCY", secret_ref: { backend: "aws-ssm", path: "/prod/worker/concurrency", version: null }, description: "Max concurrent job threads", required: false },
-      { key: "AWS_DEFAULT_REGION", secret_ref: { backend: "aws-ssm", path: "/prod/region", version: null }, description: "AWS region for SDK calls", required: false },
-    ],
-    metadata: { demo: true },
-  },
-  "broken-deploy": {
-    id: "broken-deploy",
-    name: "⚠️ Broken Deploy (Intentional Errors)",
-    platform: "github-actions",
-    environment: "staging",
-    vars: [
-      { key: "GITHUB_INTERNAL_TOKEN", secret_ref: { backend: "github-secrets", path: "internal-token", version: null }, description: "❌ Uses reserved GITHUB_ prefix", required: true },
-      { key: "db url", secret_ref: { backend: "github-secrets", path: "db-url", version: null }, description: "❌ Spaces in key name — invalid naming", required: true },
-      { key: "API_KEY", secret_ref: { backend: "hashicorp-vault", path: "staging/api-key", version: null }, description: "❌ Vault not supported on GitHub Actions", required: true },
-      { key: "VALID_SECRET", secret_ref: { backend: "github-secrets", path: "some-secret", version: null }, description: "✅ This one is fine", required: false },
-      { key: "API_KEY", secret_ref: { backend: "github-secrets", path: "duplicate-key", version: null }, description: "❌ Duplicate key name", required: false },
-    ],
-    metadata: { demo: true },
-  },
-};
-
-function loadDemoProfiles() {
-  let added = 0;
-  for (const [id, profile] of Object.entries(DEMO_PROFILES)) {
-    if (!profiles[id]) {
-      profiles[id] = JSON.parse(JSON.stringify(profile));
-      added++;
-    }
-  }
-  saveProfilesToStorage();
-  renderProfiles();
-  renderDashboard();
-  populateSelects();
-
-  // Show success message
-  const msg = document.getElementById("demo-loaded-msg");
-  if (added > 0) {
-    msg.style.display = "block";
-    msg.innerHTML = `<div style="background: #23863620; border: 1px solid #3fb950; border-radius: 8px; padding: 12px 16px; font-size: 14px; color: #3fb950;">
-      ✅ Loaded ${added} demo profile${added > 1 ? "s" : ""}! Follow the walkthrough below or explore on your own.
-    </div>`;
-  } else {
-    msg.style.display = "block";
-    msg.innerHTML = `<div style="background: #1f6feb20; border: 1px solid #58a6ff; border-radius: 8px; padding: 12px 16px; font-size: 14px; color: #58a6ff;">
-      Demo profiles already loaded. Clear them first to reload.
-    </div>`;
-  }
-
-  // Show walkthrough
-  document.getElementById("walkthrough-card").style.display = "block";
-}
-
-function clearDemoProfiles() {
-  let removed = 0;
-  for (const id of Object.keys(DEMO_PROFILES)) {
-    if (profiles[id]) {
-      delete profiles[id];
-      removed++;
-    }
-  }
-  saveProfilesToStorage();
-  renderProfiles();
-  renderDashboard();
-  populateSelects();
-
-  document.getElementById("walkthrough-card").style.display = "none";
-  const msg = document.getElementById("demo-loaded-msg");
-  if (removed > 0) {
-    msg.style.display = "block";
-    msg.innerHTML = `<div style="background: #9e6a0320; border: 1px solid #d29922; border-radius: 8px; padding: 12px 16px; font-size: 14px; color: #d29922;">
-      🗑 Removed ${removed} demo profile${removed > 1 ? "s" : ""}. Your custom profiles are untouched.
-    </div>`;
-    setTimeout(() => { msg.style.display = "none"; }, 3000);
-  }
-}
-
-function goToTab(tabName) {
-  document.querySelectorAll("#nav button").forEach(b => b.classList.remove("active"));
-  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-  const btn = document.querySelector(`#nav button[data-tab="${tabName}"]`);
-  if (btn) btn.classList.add("active");
-  const tab = document.getElementById("tab-" + tabName);
-  if (tab) tab.classList.add("active");
-  populateSelects();
-  if (tabName === "preview") renderPreview();
+  const d = document.createElement("div"); d.textContent = String(s); return d.innerHTML;
 }
 </script>
 </body>
