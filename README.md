@@ -10,7 +10,8 @@ A **zero-trust** deployment configuration router — define your environment var
 2. **Create Profiles** — choose a platform, add env vars with secret references (never actual values)
 3. **Validate** — run profiles against platform contracts to catch issues before deployment
 4. **Export** — generate deployment-ready config in 17 formats
-5. **Submit Contracts** — missing a platform? Submit a new contract via GitHub PR
+5. **Browse Recipes** — pick a multi-platform stack and generate all linked profiles at once
+6. **Submit Contracts** — missing a platform? Submit a new contract via GitHub PR
 
 ## Zero-Trust Principles
 
@@ -82,6 +83,40 @@ Load demos from the app to try:
 | Heroku API — PaaS | Heroku | 6 vars, Heroku + Doppler |
 | Edge Worker — Cloudflare | Cloudflare Workers | 4 vars, CF secrets |
 | Cloud Run API — GCP | Google Cloud Run | 6 vars, Secret Manager |
+
+## Deployment Recipes (8)
+
+Recipes are **multi-platform deployment stacks** — composable blueprints that chain platform contracts into complete pipelines.
+
+| Recipe | Steps | Complexity | Flow |
+|--------|-------|------------|------|
+| Full-Stack Kubernetes | 4 | Advanced | GitHub Actions → Docker → K8s → Terraform |
+| Serverless AWS | 3 | Intermediate | GitHub Actions → Lambda → Terraform |
+| JAMstack on Vercel | 1 | Starter | GitHub → Vercel |
+| Heroku PaaS Stack | 2 | Starter | GitHub Actions → Heroku |
+| Edge-First Cloudflare | 2 | Intermediate | GitHub Actions → Cloudflare Workers |
+| AWS ECS Fargate Pipeline | 4 | Intermediate | GitHub Actions → Docker → ECS → Terraform |
+| GCP Cloud-Native | 3 | Intermediate | GitHub Actions → Cloud Run → Terraform |
+| GitLab CI + Docker Compose | 2 | Starter | GitLab CI → Docker Compose |
+
+Each recipe shows the full pipeline flow, per-step env vars with suggested secret backends, and a **"Generate All Profiles"** button that creates linked profiles for every step in one click.
+
+## Deployment Recipes (8)
+
+Recipes are **multi-platform deployment stacks** — composable blueprints that chain platform contracts into complete pipelines.
+
+| Recipe | Steps | Complexity | Flow |
+|--------|-------|------------|------|
+| Full-Stack Kubernetes | 4 | Advanced | GitHub Actions → Docker → K8s → Terraform |
+| Serverless AWS | 3 | Intermediate | GitHub Actions → Lambda → Terraform |
+| JAMstack on Vercel | 1 | Starter | GitHub → Vercel |
+| Heroku PaaS Stack | 2 | Starter | GitHub Actions → Heroku |
+| Edge-First Cloudflare | 2 | Intermediate | GitHub Actions → Cloudflare Workers |
+| AWS ECS Fargate Pipeline | 4 | Intermediate | GitHub Actions → Docker → ECS → Terraform |
+| GCP Cloud-Native | 3 | Intermediate | GitHub Actions → Cloud Run → Terraform |
+| GitLab CI + Docker Compose | 2 | Starter | GitLab CI → Docker Compose |
+
+Each recipe shows the full pipeline flow, per-step env vars with suggested secret backends, and a **"Generate All Profiles"** button that creates linked profiles for every step in one click.
 
 ## Community Contracts
 
