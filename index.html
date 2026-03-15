@@ -189,10 +189,50 @@
     .tag { font-size: 9px; }
   }
 
+
+  .import-panel {
+    background: var(--surface2);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin-bottom: 16px;
+  }
+  .import-panel.collapsed > *:not(:first-child) { display: none; }
+  .import-panel.collapsed { padding: 8px 14px; }
+
+  .import-panel {
+    background: var(--surface2);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin-bottom: 16px;
+  }
+  .import-panel.collapsed > *:not(:first-child) { display: none; }
+  .import-panel.collapsed { padding: 8px 14px; }
   .recipe-sub { background: var(--surface2); border: 1px solid var(--border); }
   .recipe-sub.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
   .recipe-panel { }
 
+
+  .import-panel {
+    background: var(--surface2);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin-bottom: 16px;
+  }
+  .import-panel.collapsed > *:not(:first-child) { display: none; }
+  .import-panel.collapsed { padding: 8px 14px; }
+
+  .import-panel {
+    background: var(--surface2);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin-bottom: 16px;
+  }
+  .import-panel.collapsed > *:not(:first-child) { display: none; }
+  .import-panel.collapsed { padding: 8px 14px; }
   .recipe-sub { background: var(--surface2); border: 1px solid var(--border); }
   .recipe-sub.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
   .recipe-panel { }
@@ -389,6 +429,30 @@
   <div id="rsub-build" class="recipe-panel" style="display:none;">
     <div class="card">
       <h3 style="margin-bottom:10px;" id="rb-title">Build a Recipe</h3>
+
+      <!-- Import Controls -->
+      <div id="rb-import-panel" class="import-panel">
+        <div class="flex-b" style="flex-direction:row; align-items:center; margin-bottom:6px;">
+          <label style="margin:0; font-size:13px; font-weight:600;">📥 Import Recipe</label>
+          <button class="btn btn-s btn-sec" style="font-size:11px;" onclick="toggleImportPanel()">▼ Collapse</button>
+        </div>
+        <p class="muted" style="font-size:11px; margin-bottom:8px;">Paste recipe JSON or upload a .json file to auto-populate the builder.</p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="flex:2; min-width:250px;">
+            <textarea id="rb-import-text" rows="4" placeholder='{"id": "my-stack", "name": "My Stack", ...}' style="font-family:monospace; font-size:11px;"></textarea>
+          </div>
+          <div style="flex:1; min-width:140px; display:flex; flex-direction:column; gap:6px;">
+            <button class="btn btn-s" onclick="importRecipeFromText()" style="width:100%;">📋 Import from Text</button>
+            <label class="btn btn-s btn-sec" style="width:100%; text-align:center; cursor:pointer; margin:0;">
+              📁 Import from File
+              <input type="file" id="rb-import-file" accept=".json,application/json" onchange="importRecipeFromFile(event)" style="display:none;">
+            </label>
+            <button class="btn btn-s btn-sec" onclick="clearImport()" style="width:100%; font-size:10px;">✕ Clear</button>
+          </div>
+        </div>
+        <div id="rb-import-msg" style="margin-top:6px;"></div>
+      </div>
+
       <div class="form-row">
         <label>Recipe ID (slug)</label>
         <input id="rb-id" placeholder="my-api-stack">
@@ -1766,6 +1830,199 @@ async function submitRecipe() {
   }
 }
 
+
+// ══════════════════════════════════════════════════
+// RECIPE IMPORT — Text / File / Validation
+// ══════════════════════════════════════════════════
+
+const _VALID_CATEGORIES = new Set(["fullstack", "api", "frontend", "data-pipeline", "edge", "microservices"]);
+const _VALID_COMPLEXITIES = new Set(["starter", "intermediate", "advanced"]);
+const _VALID_ROLES = new Set(["build", "ci", "deploy", "secrets", "routing", "monitoring", "storage", "iac", "cdn"]);
+
+function validateRecipeJson(raw) {
+  const errors = [];
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return ["Input must be a JSON object, not " + typeof raw];
+  }
+  // Required fields
+  for (const f of ["id", "name", "description", "category", "steps"]) {
+    if (!(f in raw)) errors.push(`Missing required field: ${f}`);
+  }
+  // ID format
+  const cid = raw.id || "";
+  if (cid && !/^[a-z][a-z0-9-]*$/.test(cid)) {
+    errors.push(`Invalid id format: '${cid}' — must be lowercase kebab-case`);
+  }
+  // Category
+  const cat = raw.category || "";
+  if (cat && !_VALID_CATEGORIES.has(cat)) {
+    errors.push(`Invalid category: '${cat}'`);
+  }
+  // Complexity
+  const cx = raw.complexity || "";
+  if (cx && !_VALID_COMPLEXITIES.has(cx)) {
+    errors.push(`Invalid complexity: '${cx}'`);
+  }
+  // Steps
+  const steps = raw.steps;
+  if (steps !== undefined) {
+    if (!Array.isArray(steps)) {
+      errors.push("'steps' must be an array");
+      return errors;
+    }
+    if (steps.length === 0) {
+      errors.push("'steps' must not be empty");
+    }
+    const stepIds = new Set();
+    const allIds = new Set(steps.filter(s => s && s.id).map(s => s.id));
+    steps.forEach((step, i) => {
+      const p = `Step ${i + 1}`;
+      if (typeof step !== "object" || step === null) {
+        errors.push(`${p}: must be an object`); return;
+      }
+      for (const sf of ["id", "platform", "role"]) {
+        if (!(sf in step)) errors.push(`${p}: missing '${sf}'`);
+      }
+      if (step.id && stepIds.has(step.id)) {
+        errors.push(`${p}: duplicate step id '${step.id}'`);
+      }
+      if (step.id) stepIds.add(step.id);
+      if (step.role && !_VALID_ROLES.has(step.role)) {
+        errors.push(`${p}: invalid role '${step.role}'`);
+      }
+      (step.depends_on || []).forEach(dep => {
+        if (!allIds.has(dep)) errors.push(`${p}: depends_on references '${dep}' which doesn't exist`);
+      });
+      (step.shared_vars || []).forEach((sv, vi) => {
+        if (typeof sv !== "object") return;
+        if (!sv.key || !sv.key.trim()) errors.push(`${p}, var ${vi+1}: key must not be blank`);
+        if (!("description" in sv)) errors.push(`${p}, var ${vi+1}: missing 'description'`);
+      });
+    });
+  }
+  return errors;
+}
+
+function importRecipeFromText() {
+  const textarea = document.getElementById("rb-import-text");
+  const msg = document.getElementById("rb-import-msg");
+  const text = (textarea ? textarea.value : "").trim();
+  if (!text) {
+    showImportMsg(msg, "error", "Paste recipe JSON into the text area first.");
+    return;
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (e) {
+    showImportMsg(msg, "error", `Invalid JSON: ${e.message}`);
+    return;
+  }
+  importRecipeData(parsed, msg);
+}
+
+function importRecipeFromFile(event) {
+  const msg = document.getElementById("rb-import-msg");
+  const file = event.target.files[0];
+  if (!file) return;
+  if (!file.name.endsWith(".json")) {
+    showImportMsg(msg, "error", "Please select a .json file.");
+    event.target.value = "";
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    let parsed;
+    try {
+      parsed = JSON.parse(e.target.result);
+    } catch (err) {
+      showImportMsg(msg, "error", `Invalid JSON in file: ${err.message}`);
+      return;
+    }
+    // Also show the JSON in the textarea for visibility
+    document.getElementById("rb-import-text").value = JSON.stringify(parsed, null, 2);
+    importRecipeData(parsed, msg);
+  };
+  reader.onerror = function() {
+    showImportMsg(msg, "error", "Failed to read file.");
+  };
+  reader.readAsText(file);
+  event.target.value = "";  // reset file input
+}
+
+function importRecipeData(parsed, msg) {
+  const errors = validateRecipeJson(parsed);
+  if (errors.length > 0) {
+    showImportMsg(msg, "error", "Validation errors:<br>" + errors.map(e => `• ${esc(e)}`).join("<br>"));
+    return;
+  }
+  // Populate the builder form
+  document.getElementById("rb-id").value = parsed.id || "";
+  document.getElementById("rb-id").disabled = false;
+  document.getElementById("rb-name").value = parsed.name || "";
+  document.getElementById("rb-desc").value = parsed.description || "";
+  document.getElementById("rb-category").value = parsed.category || "api";
+  document.getElementById("rb-complexity").value = parsed.complexity || "starter";
+
+  // Load steps
+  builderSteps = (parsed.steps || []).map(s => ({
+    id: s.id || "",
+    platform: s.platform || "",
+    role: s.role || "deploy",
+    label: s.label || "",
+    depends_on: s.depends_on || [],
+    shared_vars: (s.shared_vars || []).map(v => ({
+      key: v.key || "",
+      description: v.description || "",
+      required: v.required || false,
+      suggested_backend: v.suggested_backend || "",
+      suggested_path: v.suggested_path || "",
+    })),
+    notes: s.notes || "",
+  }));
+  renderBuilderSteps();
+
+  editingRecipeId = null;
+  document.getElementById("rb-title").textContent = "Build a Recipe (imported)";
+
+  const stepCount = builderSteps.length;
+  const varCount = builderSteps.reduce((n, s) => n + (s.shared_vars ? s.shared_vars.length : 0), 0);
+  showImportMsg(msg, "success",
+    `✅ Imported <strong>${esc(parsed.name)}</strong> — ${stepCount} step${stepCount !== 1 ? "s" : ""}, ${varCount} variable${varCount !== 1 ? "s" : ""}. Review and <strong>Save</strong> when ready.`
+  );
+}
+
+function showImportMsg(el, type, html) {
+  if (!el) return;
+  const colors = {
+    error: { bg: "#f8514920", border: "var(--error)", color: "var(--error)" },
+    success: { bg: "#23863620", border: "var(--success)", color: "var(--success)" },
+    info: { bg: "#1f6feb20", border: "var(--accent)", color: "var(--accent)" },
+  };
+  const c = colors[type] || colors.info;
+  el.innerHTML = `<div style="background:${c.bg}; border:1px solid ${c.border}; border-radius:var(--radius); padding:8px 12px; font-size:12px; color:${c.color}; margin-top:4px;">${html}</div>`;
+}
+
+function toggleImportPanel() {
+  const panel = document.getElementById("rb-import-panel");
+  if (!panel) return;
+  panel.classList.toggle("collapsed");
+  const btn = panel.querySelector("button");
+  if (btn) btn.textContent = panel.classList.contains("collapsed") ? "▶ Expand" : "▼ Collapse";
+}
+
+function clearImport() {
+  const ta = document.getElementById("rb-import-text");
+  const msg = document.getElementById("rb-import-msg");
+  const file = document.getElementById("rb-import-file");
+  if (ta) ta.value = "";
+  if (msg) msg.innerHTML = "";
+  if (file) file.value = "";
+}
+
+
+
+// ══════════════════════════════════════════════════
 /* ══════════════════════════════════════════════════════════════════════
    DEMO PROFILES
    ══════════════════════════════════════════════════════════════════════ */
