@@ -249,6 +249,20 @@
   #passphrase-modal input { width:100%; margin-bottom:8px; }
   #passphrase-modal .modal-actions { display:flex; gap:8px; margin-top:12px; }
 
+  .oauth-buttons { display:flex; flex-direction:column; gap:8px; margin:12px 0; }
+  .oauth-btn { display:flex; align-items:center; gap:10px; padding:10px 16px; border-radius:8px; border:1px solid var(--border); cursor:pointer; font-size:13px; font-weight:500; transition:all 0.2s; background:var(--card); color:var(--text); }
+  .oauth-btn:hover { border-color:var(--accent); background:#1f6feb10; }
+  .oauth-btn:disabled { opacity:0.4; cursor:not-allowed; }
+  .oauth-btn img, .oauth-btn svg { width:20px; height:20px; }
+  .oauth-btn .provider-name { flex:1; text-align:left; }
+  .oauth-btn .status-tag { font-size:10px; padding:2px 6px; border-radius:4px; }
+  .oauth-divider { display:flex; align-items:center; gap:12px; margin:16px 0; color:var(--muted); font-size:11px; }
+  .oauth-divider::before, .oauth-divider::after { content:''; flex:1; border-top:1px solid var(--border); }
+  .security-method-tabs { display:flex; gap:0; margin-bottom:16px; border-radius:8px; overflow:hidden; border:1px solid var(--border); }
+  .security-method-tabs button { flex:1; padding:8px 12px; border:none; background:var(--bg); color:var(--muted); cursor:pointer; font-size:12px; font-weight:500; transition:all 0.2s; }
+  .security-method-tabs button.active { background:var(--accent); color:#fff; }
+  .security-method-tabs button:hover:not(.active) { background:#1f6feb10; }
+
 </style>
 </head>
 <body>
@@ -273,8 +287,9 @@
 <div id="security-bar" class="security-bar unlocked" style="max-width:960px; margin:0 auto;">
   <span id="security-icon">🔓</span>
   <span id="security-label">Data unencrypted — stored in plain text</span>
+  <span id="security-user" style="font-size:10px; opacity:0.7;"></span>
   <span style="flex:1;"></span>
-  <button onclick="showPassphraseModal('setup')">Set Passphrase</button>
+  <button onclick="showSecurityModal('setup')">Encrypt Data</button>
 </div>
 
 <main>
@@ -2463,51 +2478,133 @@ function enableEncryptedStorage() {
 
 // ── Passphrase Modal ──
 
-function showPassphraseModal(mode) {
+function showSecurityModal(mode) {
   // mode: 'setup' | 'unlock' | 'change'
   const existing = document.getElementById("passphrase-modal");
   if (existing) existing.remove();
 
   const isSetup = mode === "setup";
   const isChange = mode === "change";
-  const title = isSetup ? "🔐 Set Encryption Passphrase" : isChange ? "🔑 Change Passphrase" : "🔓 Unlock Your Data";
-  const desc = isSetup
-    ? "Choose a passphrase to encrypt your deployment configs in this browser. Your data never leaves your machine."
-    : isChange
-    ? "Enter your current passphrase, then set a new one."
-    : "Enter your passphrase to decrypt your saved data.";
+  const isUnlock = mode === "unlock";
+
+  const title = isSetup ? "🔐 Secure Your Data" : isChange ? "🔑 Change Security" : "🔓 Unlock Your Data";
 
   const modal = document.createElement("div");
   modal.id = "passphrase-modal";
+
+  // Check what method was previously used
+  const prevMethod = localStorage.getItem("ztdc_auth_method") || "";  // 'passphrase' | 'github' | 'google' | 'microsoft'
+  const showOAuthTab = isSetup || (isUnlock && prevMethod && prevMethod !== "passphrase");
+  const showPassTab = isSetup || isChange || (isUnlock && (!prevMethod || prevMethod === "passphrase"));
+  const defaultTab = (isUnlock && prevMethod && prevMethod !== "passphrase") ? "oauth" : "passphrase";
+
   modal.innerHTML = `
-    <div class="modal-box">
+    <div class="modal-box" style="max-width:440px;">
       <h3>${title}</h3>
-      <p class="muted" style="font-size:12px; margin-bottom:12px;">${desc}</p>
-      ${isChange ? '<div><label style="font-size:11px;">Current Passphrase</label><input id="pp-current" type="password" placeholder="Current passphrase"></div>' : ''}
-      <div><label style="font-size:11px;">${isChange ? 'New Passphrase' : 'Passphrase'}</label><input id="pp-input" type="password" placeholder="Enter passphrase (min 6 characters)"></div>
-      ${isSetup || isChange ? '<div><label style="font-size:11px;">Confirm</label><input id="pp-confirm" type="password" placeholder="Confirm passphrase"></div>' : ''}
-      <div id="pp-error" style="color:var(--error); font-size:11px; min-height:16px;"></div>
-      <div class="modal-actions">
-        <button class="btn" onclick="handlePassphrase('${mode}')">${isSetup ? 'Enable Encryption' : isChange ? 'Change Passphrase' : 'Unlock'}</button>
-        ${isSetup ? '<button class="btn btn-sec" onclick="closePassphraseModal()">Skip (No Encryption)</button>' : ''}
-        ${isChange ? '<button class="btn btn-sec" onclick="closePassphraseModal()">Cancel</button>' : ''}
+      <p class="muted" style="font-size:12px; margin-bottom:12px;">
+        ${isSetup ? "Choose how to protect your deployment configs. Your data never leaves your browser." :
+          isUnlock ? "Sign in to decrypt your saved data." :
+          "Update your security settings."}
+      </p>
+
+      ${(showOAuthTab && showPassTab) ? `
+      <div class="security-method-tabs">
+        <button id="tab-oauth" class="${defaultTab === 'oauth' ? 'active' : ''}" onclick="switchSecurityTab('oauth')">🔑 Sign In</button>
+        <button id="tab-passphrase" class="${defaultTab === 'passphrase' ? 'active' : ''}" onclick="switchSecurityTab('passphrase')">🔒 Passphrase</button>
+      </div>` : ''}
+
+      <!-- OAuth Tab -->
+      <div id="security-tab-oauth" style="display:${defaultTab === 'oauth' || !showPassTab ? 'block' : 'none'};">
+        <div class="oauth-buttons">
+          <button class="oauth-btn" onclick="startOAuthFlow('github')" id="oauth-github-btn">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+            <span class="provider-name">Continue with GitHub</span>
+            <span class="status-tag" style="background:var(--success); color:#000;">ready</span>
+          </button>
+          <button class="oauth-btn" onclick="startOAuthFlow('google')" id="oauth-google-btn">
+            <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+            <span class="provider-name">Continue with Google</span>
+            <span class="status-tag" style="background:var(--warn,#d29920); color:#000;">config needed</span>
+          </button>
+          <button class="oauth-btn" onclick="startOAuthFlow('microsoft')" id="oauth-microsoft-btn">
+            <svg viewBox="0 0 24 24"><rect x="1" y="1" width="10" height="10" fill="#F25022"/><rect x="13" y="1" width="10" height="10" fill="#7FBA00"/><rect x="1" y="13" width="10" height="10" fill="#00A4EF"/><rect x="13" y="13" width="10" height="10" fill="#FFB900"/></svg>
+            <span class="provider-name">Continue with Microsoft</span>
+            <span class="status-tag" style="background:var(--warn,#d29920); color:#000;">config needed</span>
+          </button>
+        </div>
+        <p class="muted" style="font-size:10px; text-align:center; margin:4px 0 0 0;">
+          Passwordless — your identity is your encryption key. No passwords to remember.
+        </p>
+        <div id="oauth-error" style="color:var(--error); font-size:11px; min-height:16px; margin-top:4px;"></div>
+      </div>
+
+      <!-- Passphrase Tab -->
+      <div id="security-tab-passphrase" style="display:${defaultTab === 'passphrase' || !showOAuthTab ? 'block' : 'none'};">
+        ${isChange ? '<div><label style="font-size:11px;">Current Passphrase</label><input id="pp-current" type="password" placeholder="Current passphrase"></div>' : ''}
+        <div><label style="font-size:11px;">${isChange ? 'New Passphrase' : 'Passphrase'}</label><input id="pp-input" type="password" placeholder="Enter passphrase (min 6 characters)"></div>
+        ${isSetup || isChange ? '<div><label style="font-size:11px;">Confirm</label><input id="pp-confirm" type="password" placeholder="Confirm passphrase"></div>' : ''}
+        <div id="pp-error" style="color:var(--error); font-size:11px; min-height:16px;"></div>
+        <div class="modal-actions">
+          <button class="btn" onclick="handlePassphrase('${mode}')">${isSetup ? 'Enable Encryption' : isChange ? 'Change Passphrase' : 'Unlock'}</button>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="margin-top:8px; border-top:1px solid var(--border); padding-top:8px;">
+        ${isSetup ? '<button class="btn btn-sec" onclick="closeSecurityModal()">Skip (No Encryption)</button>' : ''}
+        ${isChange ? '<button class="btn btn-sec" onclick="closeSecurityModal()">Cancel</button>' : ''}
       </div>
     </div>
   `;
   document.body.appendChild(modal);
-  // Focus input
+
+  // Focus appropriate input
   setTimeout(() => {
-    const inp = document.getElementById(isChange ? "pp-current" : "pp-input");
-    if (inp) inp.focus();
+    if (defaultTab === "passphrase") {
+      const inp = document.getElementById(isChange ? "pp-current" : "pp-input");
+      if (inp) inp.focus();
+    }
   }, 100);
-  // Enter key
-  modal.addEventListener("keydown", e => { if (e.key === "Enter") handlePassphrase(mode); });
+
+  // Enter key for passphrase tab
+  modal.addEventListener("keydown", e => {
+    if (e.key === "Enter" && document.getElementById("security-tab-passphrase").style.display !== "none") {
+      handlePassphrase(mode);
+    }
+  });
 }
 
-function closePassphraseModal() {
+// Keep backward compatibility
+function showPassphraseModal(mode) { showSecurityModal(mode); }
+
+function switchSecurityTab(tab) {
+  const oauthTab = document.getElementById("security-tab-oauth");
+  const passTab = document.getElementById("security-tab-passphrase");
+  const oauthBtn = document.getElementById("tab-oauth");
+  const passBtn = document.getElementById("tab-passphrase");
+
+  if (tab === "oauth") {
+    if (oauthTab) oauthTab.style.display = "block";
+    if (passTab) passTab.style.display = "none";
+    if (oauthBtn) oauthBtn.classList.add("active");
+    if (passBtn) passBtn.classList.remove("active");
+  } else {
+    if (oauthTab) oauthTab.style.display = "none";
+    if (passTab) passTab.style.display = "block";
+    if (oauthBtn) oauthBtn.classList.remove("active");
+    if (passBtn) passBtn.classList.add("active");
+    setTimeout(() => {
+      const inp = document.getElementById("pp-input");
+      if (inp) inp.focus();
+    }, 50);
+  }
+}
+
+function closeSecurityModal() {
   const m = document.getElementById("passphrase-modal");
   if (m) m.remove();
 }
+function closePassphraseModal() { closeSecurityModal(); }
+
 
 async function handlePassphrase(mode) {
   const errEl = document.getElementById("pp-error");
@@ -2569,6 +2666,7 @@ async function handlePassphrase(mode) {
 
     // Mark that encryption is enabled
     localStorage.setItem("ztdc_encrypted", "true");
+    localStorage.setItem("ztdc_auth_method", "passphrase");
     localStorage.setItem("ztdc_enc_check", await encryptData({check: true}, _sessionKey));
 
     enableEncryptedStorage();
@@ -2630,11 +2728,247 @@ function updateSecurityBar(encrypted) {
 }
 
 // ── Boot: check if encryption was previously enabled ──
+
+// ═══════════════════════════════════════════════════════════════
+// OAUTH SIGN-IN — Passwordless encryption via OAuth identity
+// ═══════════════════════════════════════════════════════════════
+
+// OAuth client configs — GitHub works immediately with PAT flow
+// Google and Microsoft need registered OAuth client_ids
+const OAUTH_CONFIG = {
+  github: {
+    // GitHub: uses PAT-based identity (no OAuth app registration needed for GH Pages)
+    // The user's GitHub user ID is a stable, unique identifier
+    ready: true,
+    label: "GitHub",
+  },
+  google: {
+    // Google: needs a GIS client_id registered at console.cloud.google.com
+    clientId: "",  // Set this to enable: "xxxx.apps.googleusercontent.com"
+    ready: false,
+    label: "Google",
+  },
+  microsoft: {
+    // Microsoft: needs an MSAL client_id registered at portal.azure.com
+    clientId: "",  // Set this to enable
+    tenantId: "common",
+    ready: false,
+    label: "Microsoft",
+  },
+};
+
+async function deriveKeyFromOAuth(provider, sub) {
+  // Mirrors Python's derive_encryption_key_from_oauth
+  // provider+sub → deterministic AES-256 key via PBKDF2
+  const enc = new TextEncoder();
+  const salt = enc.encode(`ztdc-oauth-v1:${provider}`);
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw", enc.encode(sub), "PBKDF2", false, ["deriveKey"]
+  );
+  return crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
+
+async function startOAuthFlow(provider) {
+  const errEl = document.getElementById("oauth-error");
+  if (errEl) errEl.textContent = "";
+
+  if (provider === "github") {
+    await startGitHubFlow();
+  } else if (provider === "google") {
+    if (!OAUTH_CONFIG.google.clientId) {
+      if (errEl) errEl.textContent = "Google OAuth not configured yet. Set OAUTH_CONFIG.google.clientId to enable.";
+      return;
+    }
+    if (errEl) errEl.textContent = "Google OAuth: coming soon — use Passphrase tab for now.";
+  } else if (provider === "microsoft") {
+    if (!OAUTH_CONFIG.microsoft.clientId) {
+      if (errEl) errEl.textContent = "Microsoft OAuth not configured yet. Set OAUTH_CONFIG.microsoft.clientId to enable.";
+      return;
+    }
+    if (errEl) errEl.textContent = "Microsoft OAuth: coming soon — use Passphrase tab for now.";
+  }
+}
+
+async function startGitHubFlow() {
+  // GitHub flow: user provides a PAT (they likely already have one for Contribute tab)
+  // We call /user to get their stable numeric ID, then derive the encryption key from it.
+  // The PAT is NEVER stored — only used to fetch the user ID.
+
+  const errEl = document.getElementById("oauth-error");
+  const btn = document.getElementById("oauth-github-btn");
+  if (btn) btn.disabled = true;
+
+  // Check if they already have a token in the Contribute form
+  let token = (document.getElementById("sub-token") || {}).value || "";
+
+  if (!token) {
+    // Show inline token input
+    if (btn) btn.disabled = false;
+    const oauthDiv = document.getElementById("security-tab-oauth");
+    if (!document.getElementById("gh-token-input") && oauthDiv) {
+      const inputHtml = `
+        <div id="gh-token-input" style="margin-top:8px; padding:10px; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius);">
+          <label style="font-size:11px; display:block; margin-bottom:4px;">GitHub Personal Access Token</label>
+          <input id="gh-oauth-token" type="password" placeholder="ghp_xxxxxxxxxxxx" style="width:100%; margin-bottom:4px;" autocomplete="off">
+          <p class="muted" style="font-size:10px; margin:0;">
+            🔒 Used once to verify your identity — <strong>never stored</strong>. 
+            <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--accent);">Create token</a> (no scopes needed — just read:user).
+          </p>
+          <button class="btn" style="margin-top:8px; width:100%;" onclick="completeGitHubFlow()">Verify & Encrypt</button>
+        </div>
+      `;
+      const div = document.createElement("div");
+      div.innerHTML = inputHtml;
+      oauthDiv.appendChild(div.firstElementChild);
+      setTimeout(() => {
+        const inp = document.getElementById("gh-oauth-token");
+        if (inp) inp.focus();
+      }, 50);
+    }
+    return;
+  }
+
+  await completeGitHubFlow(token);
+}
+
+async function completeGitHubFlow(providedToken) {
+  const errEl = document.getElementById("oauth-error");
+  const token = providedToken || (document.getElementById("gh-oauth-token") || {}).value || "";
+
+  if (!token || !token.trim()) {
+    if (errEl) errEl.textContent = "Please enter your GitHub Personal Access Token.";
+    return;
+  }
+
+  if (errEl) errEl.innerHTML = '<span style="color:var(--accent);">⏳ Verifying with GitHub...</span>';
+
+  try {
+    const resp = await fetch("https://api.github.com/user", {
+      headers: {
+        "Authorization": `Bearer ${token.trim()}`,
+        "Accept": "application/vnd.github+json",
+      },
+    });
+
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({}));
+      throw new Error(body.message || `GitHub returned ${resp.status}`);
+    }
+
+    const user = await resp.json();
+    const userId = String(user.id);  // Stable numeric ID — never changes
+    const username = user.login;
+    const avatarUrl = user.avatar_url;
+
+    // Derive encryption key from GitHub identity
+    _sessionKey = await deriveKeyFromOAuth("github", userId);
+    _encryptionEnabled = true;
+
+    // Migrate existing plaintext data
+    const existingProfiles = localStorage.getItem(STORAGE_KEY);
+    const existingRecipes = localStorage.getItem(CUSTOM_RECIPES_KEY);
+
+    if (existingProfiles && !existingProfiles.startsWith(ENCRYPTED_PREFIX)) {
+      try {
+        profiles = JSON.parse(existingProfiles);
+        await saveProfilesSecure();
+      } catch {}
+    }
+    if (existingRecipes && !existingRecipes.startsWith(ENCRYPTED_PREFIX)) {
+      try {
+        customRecipes = JSON.parse(existingRecipes);
+        await saveCustomRecipesSecure();
+      } catch {}
+    }
+
+    // Store auth metadata (NOT the token — just the method + display info)
+    localStorage.setItem("ztdc_encrypted", "true");
+    localStorage.setItem("ztdc_auth_method", "github");
+    localStorage.setItem("ztdc_auth_display", JSON.stringify({ username, avatarUrl }));
+    localStorage.setItem("ztdc_enc_check", await encryptData({check: true}, _sessionKey));
+
+    enableEncryptedStorage();
+    updateSecurityBar(true, "github", { username, avatarUrl });
+    closeSecurityModal();
+
+    // Reload data with decryption
+    await loadProfilesSecure();
+    await loadCustomRecipesSecure();
+    refreshAll();
+
+  } catch (e) {
+    if (errEl) errEl.textContent = `GitHub auth failed: ${e.message}`;
+    const btn = document.getElementById("oauth-github-btn");
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ── Enhanced updateSecurityBar with OAuth info ──
+
+const _origUpdateSecurityBar = typeof updateSecurityBar === "function" ? updateSecurityBar : null;
+
+updateSecurityBar = function(encrypted, method, userInfo) {
+  const bar = document.getElementById("security-bar");
+  const icon = document.getElementById("security-icon");
+  const label = document.getElementById("security-label");
+  const userSpan = document.getElementById("security-user");
+  if (!bar) return;
+
+  if (encrypted) {
+    bar.className = "security-bar locked";
+    const methodLabel = method === "github" ? "GitHub" : method === "google" ? "Google" : method === "microsoft" ? "Microsoft" : "passphrase";
+
+    if (method && method !== "passphrase" && userInfo) {
+      icon.textContent = "🔒";
+      label.innerHTML = `Encrypted via <strong>${methodLabel}</strong>`;
+      if (userInfo.username) {
+        userSpan.textContent = `@${userInfo.username}`;
+      }
+    } else {
+      icon.textContent = "🔒";
+      label.textContent = "Data encrypted with your passphrase";
+      userSpan.textContent = "";
+    }
+    bar.querySelector("button").textContent = "Change";
+    bar.querySelector("button").onclick = () => showSecurityModal("change");
+  } else {
+    bar.className = "security-bar unlocked";
+    icon.textContent = "🔓";
+    label.textContent = "Data unencrypted — stored in plain text";
+    userSpan.textContent = "";
+    bar.querySelector("button").textContent = "Encrypt Data";
+    bar.querySelector("button").onclick = () => showSecurityModal("setup");
+  }
+};
+
+// ── Enhanced boot: handle OAuth re-authentication ──
+
+
 (async function checkEncryptionState() {
   const wasEncrypted = localStorage.getItem("ztdc_encrypted") === "true";
-  if (wasEncrypted) {
-    // Show unlock prompt
-    showPassphraseModal("unlock");
+  if (!wasEncrypted) return;
+
+  const method = localStorage.getItem("ztdc_auth_method") || "passphrase";
+
+  if (method === "passphrase") {
+    // Passphrase unlock — show modal
+    showSecurityModal("unlock");
+  } else {
+    // OAuth unlock — show modal with OAuth tab active
+    showSecurityModal("unlock");
+    // Display info will show after re-auth
+    const display = JSON.parse(localStorage.getItem("ztdc_auth_display") || "{}");
+    const bar = document.getElementById("security-bar");
+    if (bar) {
+      const label = document.getElementById("security-label");
+      if (label) label.innerHTML = `🔒 Locked — sign in with <strong>${method}</strong> to unlock`;
+    }
   }
 })();
 
