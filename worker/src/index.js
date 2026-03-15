@@ -1,134 +1,444 @@
 /**
- * ztdc-github-oauth — Cloudflare Worker
- * 
- * Proxies the GitHub OAuth code → token exchange.
- * Keeps client_secret server-side (set via `wrangler secret put GITHUB_CLIENT_SECRET`).
- * 
- * Flow:
- *   1. SPA opens popup → github.com/login/oauth/authorize?client_id=...&redirect_uri=callback.html
- *   2. User authorizes → callback.html gets ?code=xxx → postMessage to parent
- *   3. Parent POSTs { code } to this worker
- *   4. Worker adds client_secret, exchanges code for access_token
- *   5. Worker calls api.github.com/user to get stable user ID
- *   6. Returns { user_id, login, name, avatar_url } to SPA (token is NEVER sent to browser)
- * 
- * Security:
- *   - client_secret never leaves the worker
- *   - access_token never leaves the worker — only the numeric user ID is returned
- *   - CORS locked to ALLOWED_ORIGIN
+ * ztdc-github-oauth — Cloudflare Worker (Full API Gateway)
+ *
+ * Routes:
+ *   POST /               — Legacy GitHub OAuth (backward compat)
+ *   POST /auth/github    — GitHub OAuth code exchange
+ *   POST /auth/token     — Get session token from OAuth identity
+ *   POST /api/v1/validate — Validate profile against contract
+ *   POST /api/v1/export   — Export profile in any format
+ *   GET  /api/v1/profiles — List profiles (auth required)
+ *   POST /api/v1/profiles — Create profile (auth required)
+ *   GET  /api/v1/profiles/:id — Get profile (auth required)
+ *   PUT  /api/v1/profiles/:id — Update profile (auth required)
+ *   DELETE /api/v1/profiles/:id — Delete profile (auth required)
+ *   GET  /health          — Health check
  */
+
+const GH_PAGES_BASE = "https://joshuawink.github.io/zero-trust-deploy-config";
+
+// ═══════════════════════════════════════════════════════════
+// ROUTER
+// ═══════════════════════════════════════════════════════════
 
 export default {
   async fetch(request, env) {
-    const origin = request.headers.get("Origin") || "";
+    const url = new URL(request.url);
+    const path = url.pathname;
+    const method = request.method;
     const allowedOrigin = env.ALLOWED_ORIGIN || "https://joshuawink.github.io";
 
-    // CORS headers
     const corsHeaders = {
       "Access-Control-Allow-Origin": allowedOrigin,
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
       "Access-Control-Max-Age": "86400",
     };
 
-    // Preflight
-    if (request.method === "OPTIONS") {
+    if (method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders });
     }
 
-    // Only POST allowed
-    if (request.method !== "POST") {
-      return new Response(JSON.stringify({ error: "Method not allowed" }), {
-        status: 405,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const json = (data, status = 200) => new Response(JSON.stringify(data), {
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
 
-    // Origin check
-    if (origin !== allowedOrigin) {
-      return new Response(JSON.stringify({ error: "Origin not allowed" }), {
-        status: 403,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+    const err = (msg, status = 400, details = null) =>
+      json({ error: msg, ...(details ? { details } : {}) }, status);
 
     try {
-      const { code } = await request.json();
-      if (!code) {
-        return new Response(JSON.stringify({ error: "Missing 'code' parameter" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      // Auth
+      if (path === "/" && method === "POST") return handleGitHubAuth(request, env, json, err);
+      if (path === "/auth/github" && method === "POST") return handleGitHubAuth(request, env, json, err);
+      if (path === "/auth/token" && method === "POST") return handleTokenIssue(request, env, json, err);
 
-      // Step 1: Exchange code for access_token (server-side — no CORS issue)
-      const tokenResp = await fetch("https://github.com/login/oauth/access_token", {
-        method: "POST",
-        headers: {
-          "Accept": "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          client_id: env.GITHUB_CLIENT_ID,
-          client_secret: env.GITHUB_CLIENT_SECRET,
-          code: code,
-        }),
-      });
+      // Validate & Export
+      if (path === "/api/v1/validate" && method === "POST") return handleValidate(request, env, json, err);
+      if (path === "/api/v1/export" && method === "POST") return handleExport(request, env, json, err);
 
-      const tokenData = await tokenResp.json();
+      // Profiles CRUD
+      if (path === "/api/v1/profiles" && method === "GET") return handleListProfiles(request, env, json, err);
+      if (path === "/api/v1/profiles" && method === "POST") return handleCreateProfile(request, env, json, err);
+      const profileMatch = path.match(/^\/api\/v1\/profiles\/([^/]+)$/);
+      if (profileMatch && method === "GET") return handleGetProfile(request, env, json, err, profileMatch[1]);
+      if (profileMatch && method === "PUT") return handleUpdateProfile(request, env, json, err, profileMatch[1]);
+      if (profileMatch && method === "DELETE") return handleDeleteProfile(request, env, json, err, profileMatch[1]);
 
-      if (tokenData.error) {
-        return new Response(JSON.stringify({
-          error: tokenData.error,
-          error_description: tokenData.error_description || "Token exchange failed",
-        }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      // Health
+      if (path === "/health") return json({ status: "ok", version: "0.3.0", endpoints: ["/auth/github", "/auth/token", "/api/v1/validate", "/api/v1/export", "/api/v1/profiles"] });
 
-      const accessToken = tokenData.access_token;
-      if (!accessToken) {
-        return new Response(JSON.stringify({ error: "No access_token in GitHub response" }), {
-          status: 502,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // Step 2: Fetch user info (server-side — token never sent to browser)
-      const userResp = await fetch("https://api.github.com/user", {
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Accept": "application/vnd.github+json",
-          "User-Agent": "ztdc-github-oauth/1.0",
-        },
-      });
-
-      if (!userResp.ok) {
-        return new Response(JSON.stringify({ error: `GitHub /user returned ${userResp.status}` }), {
-          status: 502,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const user = await userResp.json();
-
-      // Return ONLY identity info — no token, no secret
-      return new Response(JSON.stringify({
-        user_id: user.id,
-        login: user.login,
-        name: user.name || user.login,
-        avatar_url: user.avatar_url,
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return err("Not found — see https://joshuawink.github.io/zero-trust-deploy-config/agents.txt", 404);
 
     } catch (e) {
-      return new Response(JSON.stringify({ error: "Internal error", detail: e.message }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return err("Internal error: " + e.message, 500);
     }
   },
 };
+
+// ═══════════════════════════════════════════════════════════
+// AUTH: GitHub OAuth code exchange
+// ═══════════════════════════════════════════════════════════
+
+async function handleGitHubAuth(request, env, json, err) {
+  const body = await request.json().catch(() => null);
+  if (!body || !body.code) return err("Missing 'code' parameter");
+
+  const tokenResp = await fetch("https://github.com/login/oauth/access_token", {
+    method: "POST",
+    headers: { "Accept": "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({
+      client_id: env.GITHUB_CLIENT_ID,
+      client_secret: env.GITHUB_CLIENT_SECRET,
+      code: body.code,
+    }),
+  });
+
+  const tokenData = await tokenResp.json();
+  if (tokenData.error) return err(tokenData.error_description || tokenData.error);
+
+  const accessToken = tokenData.access_token;
+  if (!accessToken) return err("No access_token in GitHub response", 502);
+
+  const userResp = await fetch("https://api.github.com/user", {
+    headers: {
+      "Authorization": "Bearer " + accessToken,
+      "Accept": "application/vnd.github+json",
+      "User-Agent": "ztdc-api/0.3.0",
+    },
+  });
+
+  if (!userResp.ok) return err("GitHub /user returned " + userResp.status, 502);
+  const user = await userResp.json();
+
+  return json({
+    user_id: user.id,
+    login: user.login,
+    name: user.name || user.login,
+    avatar_url: user.avatar_url,
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUTH: Issue / verify session tokens (HMAC JWT)
+// ═══════════════════════════════════════════════════════════
+
+async function handleTokenIssue(request, env, json, err) {
+  const body = await request.json().catch(() => null);
+  if (!body || !body.provider || !body.user_id) return err("Missing provider or user_id");
+
+  const payload = {
+    sub: String(body.user_id),
+    provider: body.provider,
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + 86400,
+  };
+
+  const token = await signToken(payload, env.TOKEN_SECRET || "dev-secret");
+  return json({ token, expires_in: 86400 });
+}
+
+function b64url(str) {
+  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function signToken(payload, secret) {
+  const header = b64url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+  const body = b64url(JSON.stringify(payload));
+  const key = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(header + "." + body));
+  const sigB64 = b64url(String.fromCharCode(...new Uint8Array(sig)));
+  return header + "." + body + "." + sigB64;
+}
+
+async function verifyToken(token, secret) {
+  const parts = token.replace("Bearer ", "").split(".");
+  if (parts.length !== 3) return null;
+  const [header, body, sig] = parts;
+  const key = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" }, false, ["verify"]
+  );
+  const sigBuf = Uint8Array.from(atob(sig.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+  const valid = await crypto.subtle.verify("HMAC", key, sigBuf, new TextEncoder().encode(header + "." + body));
+  if (!valid) return null;
+  const payload = JSON.parse(atob(body.replace(/-/g, "+").replace(/_/g, "/")));
+  if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
+  return payload;
+}
+
+async function requireAuth(request, env) {
+  const authHeader = request.headers.get("Authorization") || "";
+  if (!authHeader.startsWith("Bearer ")) return null;
+  return verifyToken(authHeader, env.TOKEN_SECRET || "dev-secret");
+}
+
+// ═══════════════════════════════════════════════════════════
+// VALIDATE — check profile against platform contract
+// ═══════════════════════════════════════════════════════════
+
+async function handleValidate(request, env, json, err) {
+  const body = await request.json().catch(() => null);
+  if (!body || !body.platform) return err("Missing 'platform'");
+  if (!body.vars || !Array.isArray(body.vars)) return err("Missing 'vars' array");
+
+  const contractResp = await fetch(GH_PAGES_BASE + "/contracts/" + body.platform + ".json");
+  if (!contractResp.ok) return err("Unknown platform '" + body.platform + "'", 404);
+  const raw = await contractResp.json();
+
+  const c = {
+    required_vars: raw.required_vars || [],
+    naming_pattern: (raw.naming || {}).pattern || "^[a-zA-Z_][a-zA-Z0-9_]*$",
+    naming_description: (raw.naming || {}).description || "",
+    forbidden_prefixes: (raw.naming || {}).forbidden_prefixes || [],
+    key_max_length: (raw.limits || {}).key_max_length || null,
+    max_vars: (raw.limits || {}).max_vars || null,
+    max_total_size: (raw.limits || {}).max_total_size || null,
+  };
+
+  const issues = [];
+  const rules = [];
+
+  rules.push("required-vars");
+  for (const req of c.required_vars) {
+    if (!body.vars.some(v => v.key === req)) {
+      issues.push({ rule: "required-vars", sev: "error", key: req, msg: "Required variable '" + req + "' is missing." });
+    }
+  }
+
+  rules.push("naming-convention");
+  let rx;
+  try { rx = new RegExp(c.naming_pattern); } catch { rx = null; }
+  for (const v of body.vars) {
+    if (rx && !rx.test(v.key)) {
+      issues.push({ rule: "naming", sev: "error", key: v.key, msg: "'" + v.key + "' violates naming rule: " + (c.naming_description || c.naming_pattern) });
+    }
+    for (const p of c.forbidden_prefixes) {
+      if (v.key.startsWith(p)) {
+        issues.push({ rule: "naming", sev: "error", key: v.key, msg: "'" + v.key + "' uses reserved prefix '" + p + "'." });
+      }
+    }
+  }
+
+  rules.push("duplicate-keys");
+  const seen = {};
+  for (const v of body.vars) {
+    if (seen[v.key]) issues.push({ rule: "duplicates", sev: "error", key: v.key, msg: "Duplicate key '" + v.key + "'." });
+    seen[v.key] = true;
+  }
+
+  rules.push("platform-limits");
+  if (c.max_vars && body.vars.length > c.max_vars) {
+    issues.push({ rule: "limits", sev: "error", key: "", msg: body.vars.length + " vars exceeds limit of " + c.max_vars + "." });
+  }
+  for (const v of body.vars) {
+    if (c.key_max_length && v.key.length > c.key_max_length) {
+      issues.push({ rule: "limits", sev: "error", key: v.key, msg: "Key length (" + v.key.length + ") exceeds max (" + c.key_max_length + ")." });
+    }
+  }
+
+  const errs = issues.filter(i => i.sev === "error").length;
+  const warns = issues.filter(i => i.sev === "warning").length;
+
+  return json({
+    valid: errs === 0,
+    errors: errs,
+    warnings: warns,
+    issues,
+    rules_checked: rules,
+    platform: raw.name || body.platform,
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// EXPORT — format profile for any platform
+// ═══════════════════════════════════════════════════════════
+
+async function handleExport(request, env, json, err) {
+  const body = await request.json().catch(() => null);
+  if (!body || !body.platform) return err("Missing 'platform'");
+  if (!body.vars || !Array.isArray(body.vars)) return err("Missing 'vars' array");
+  if (!body.format) return err("Missing 'format'");
+  if (!body.name) return err("Missing 'name'");
+
+  const profile = {
+    id: (body.name || "profile").toLowerCase().replace(/[^a-z0-9-]/g, "-"),
+    name: body.name,
+    platform: body.platform,
+    environment: body.environment || "production",
+    vars: [...body.vars].sort((a, b) => (a.key || "").localeCompare(b.key || "")),
+  };
+
+  const fmts = {
+    "env": fmtEnv, "env-file": fmtEnv,
+    "docker-compose": fmtDC, "docker-compose-yaml": fmtDC,
+    "github-actions": fmtGA, "github-actions-yaml": fmtGA,
+    "k8s-configmap": fmtK8sCM, "k8s-configmap-yaml": fmtK8sCM,
+    "k8s-secret": fmtK8sS, "k8s-secret-yaml": fmtK8sS,
+    "ecs": fmtEcs, "ecs-task-def-json": fmtEcs,
+    "lambda": fmtLambda, "lambda-env-json": fmtLambda,
+    "heroku": fmtHeroku, "heroku-json": fmtHeroku,
+    "fly-toml": fmtFly,
+    "railway": fmtRailway, "railway-json": fmtRailway,
+    "render": fmtRender, "render-yaml": fmtRender,
+    "netlify": fmtNetlify, "netlify-toml": fmtNetlify,
+    "terraform": fmtTF, "terraform-tfvars": fmtTF,
+    "circleci": fmtCircle, "circleci-yaml": fmtCircle,
+    "gitlab-ci": fmtGitlab, "gitlab-ci-yaml": fmtGitlab,
+    "wrangler": fmtWrangler, "cloudflare-wrangler-toml": fmtWrangler,
+    "nomad": fmtNomad, "nomad-hcl": fmtNomad,
+  };
+
+  const fn = fmts[body.format];
+  if (!fn) {
+    const available = [...new Set(Object.keys(fmts).filter(k => !k.includes("-") || k === "fly-toml" || k === "gitlab-ci"))];
+    return err("Unknown format '" + body.format + "'. Available: " + available.join(", "));
+  }
+
+  const content = fn(profile);
+  const exts = {
+    env: ".env", "docker-compose": ".yaml", "github-actions": ".yaml",
+    "k8s-configmap": ".yaml", "k8s-secret": ".yaml", ecs: ".json",
+    lambda: ".json", heroku: ".json", "fly-toml": ".toml", railway: ".json",
+    render: ".yaml", netlify: ".toml", terraform: ".tfvars",
+    circleci: ".yaml", "gitlab-ci": ".yaml", wrangler: ".toml", nomad: ".hcl",
+  };
+  const ext = exts[body.format] || exts[body.format.split("-")[0]] || ".txt";
+
+  return json({ format: body.format, content, filename: profile.id + ext });
+}
+
+function ref(v) {
+  if (v.secret_ref) return "ref:" + v.secret_ref.backend + ":" + v.secret_ref.path + (v.secret_ref.version ? "@" + v.secret_ref.version : "");
+  return v.value || "";
+}
+
+function fmtEnv(p) {
+  return ["# Profile: " + p.name + " (" + p.platform + ")", "# Environment: " + p.environment, ""].concat(p.vars.map(v => v.key + "=" + ref(v))).join("\n") + "\n";
+}
+function fmtDC(p) {
+  return ["# Generated by ZTDC", "# Profile: " + p.name, "services:", "  " + p.id + ":", "    environment:"].concat(p.vars.map(v => "      - " + v.key + "=${{ " + v.key + " }}")).concat(["", "    env_file:", "      - .env." + p.environment]).join("\n") + "\n";
+}
+function fmtGA(p) {
+  return ["# Generated by ZTDC", "# Profile: " + p.name, "env:"].concat(p.vars.map(v => "  " + v.key + ": ${{ secrets." + v.key + " }}")).join("\n") + "\n";
+}
+function fmtK8sCM(p) {
+  return ["apiVersion: v1", "kind: ConfigMap", "metadata:", "  name: " + p.id + "-config", "data:"].concat(p.vars.map(v => '  ' + v.key + ': "' + ref(v) + '"')).join("\n") + "\n";
+}
+function fmtK8sS(p) {
+  return ["apiVersion: v1", "kind: Secret", "metadata:", "  name: " + p.id + "-secrets", "type: Opaque", "stringData:"].concat(p.vars.map(v => '  ' + v.key + ': "' + ref(v) + '"')).join("\n") + "\n";
+}
+function fmtEcs(p) {
+  const env = [], sec = [];
+  p.vars.forEach(v => {
+    const b = v.secret_ref ? v.secret_ref.backend : "";
+    if (["aws-ssm","aws-secrets-manager"].includes(b)) sec.push({name:v.key,valueFrom:v.secret_ref.path});
+    else env.push({name:v.key,value:ref(v)});
+  });
+  return JSON.stringify({_comment:"Profile: "+p.id,environment:env,secrets:sec},null,2)+"\n";
+}
+function fmtLambda(p) {
+  const v = {}; p.vars.forEach(x => v[x.key]=ref(x));
+  return JSON.stringify({_comment:"Profile: "+p.id,Variables:v},null,2)+"\n";
+}
+function fmtHeroku(p) {
+  const v = {}; p.vars.forEach(x => v[x.key]=ref(x));
+  return JSON.stringify({_comment:"Profile: "+p.id,config:v},null,2)+"\n";
+}
+function fmtFly(p) {
+  return ["# Generated by ZTDC", "# Profile: " + p.name, "", "[env]"].concat(p.vars.map(v => '  ' + v.key + ' = "' + ref(v) + '"')).join("\n") + "\n";
+}
+function fmtRailway(p) {
+  const v = {}; p.vars.forEach(x => v[x.key]=ref(x));
+  return JSON.stringify({_comment:"Profile: "+p.id,variables:v},null,2)+"\n";
+}
+function fmtRender(p) {
+  return ["# Generated by ZTDC", "# Profile: " + p.name, "", "envVars:"].concat(p.vars.flatMap(v => ["  - key: " + v.key, '    value: "' + ref(v) + '"'])).join("\n") + "\n";
+}
+function fmtNetlify(p) {
+  return ["# Generated by ZTDC", "# Profile: " + p.name, "", "[context.production.environment]"].concat(p.vars.map(v => '  ' + v.key + ' = "' + ref(v) + '"')).join("\n") + "\n";
+}
+function fmtTF(p) {
+  return ["# Generated by ZTDC", "# Profile: " + p.name, ""].concat(p.vars.map(v => v.key.replace(/^TF_VAR_/,"") + ' = "' + ref(v) + '"')).join("\n") + "\n";
+}
+function fmtCircle(p) {
+  return ["# Generated by ZTDC", "version: 2.1", "", "jobs:", "  deploy:", "    environment:"].concat(p.vars.map(v => "      " + v.key + ": ${{ " + v.key + " }}")).join("\n") + "\n";
+}
+function fmtGitlab(p) {
+  return ["# Generated by ZTDC", "# Profile: " + p.name, "", "variables:"].concat(p.vars.map(v => '  ' + v.key + ': "$' + v.key + '"')).join("\n") + "\n";
+}
+function fmtWrangler(p) {
+  return ["# Generated by ZTDC", "# Profile: " + p.name, "", "[vars]"].concat(p.vars.map(v => v.key + ' = "' + ref(v) + '"')).join("\n") + "\n";
+}
+function fmtNomad(p) {
+  return ["# Generated by ZTDC", "", 'job "' + p.id + '" {', '  group "app" {', '    task "service" {', "      env {"].concat(p.vars.map(v => '        ' + v.key + ' = "' + ref(v) + '"')).concat(["      }","    }","  }","}"]).join("\n") + "\n";
+}
+
+// ═══════════════════════════════════════════════════════════
+// PROFILES CRUD (KV-backed)
+// ═══════════════════════════════════════════════════════════
+
+async function handleListProfiles(request, env, json, err) {
+  const user = await requireAuth(request, env);
+  if (!user) return err("Authentication required", 401);
+  const kv = env.ZTDC_KV;
+  if (!kv) return err("Storage not configured — KV binding 'ZTDC_KV' missing", 503);
+  const data = await kv.get("profiles:" + user.sub, "json");
+  return json(data || {});
+}
+
+async function handleCreateProfile(request, env, json, err) {
+  const user = await requireAuth(request, env);
+  if (!user) return err("Authentication required", 401);
+  const body = await request.json().catch(() => null);
+  if (!body || !body.name || !body.platform) return err("Missing name or platform");
+  const kv = env.ZTDC_KV;
+  if (!kv) return err("Storage not configured", 503);
+  const key = "profiles:" + user.sub;
+  const profiles = (await kv.get(key, "json")) || {};
+  const id = crypto.randomUUID();
+  profiles[id] = { id, name: body.name, platform: body.platform, environment: body.environment || "production", vars: body.vars || [], created: new Date().toISOString(), updated: new Date().toISOString() };
+  await kv.put(key, JSON.stringify(profiles));
+  return json(profiles[id], 201);
+}
+
+async function handleGetProfile(request, env, json, err, id) {
+  const user = await requireAuth(request, env);
+  if (!user) return err("Authentication required", 401);
+  const kv = env.ZTDC_KV;
+  if (!kv) return err("Storage not configured", 503);
+  const profiles = (await kv.get("profiles:" + user.sub, "json")) || {};
+  if (!profiles[id]) return err("Profile not found", 404);
+  return json(profiles[id]);
+}
+
+async function handleUpdateProfile(request, env, json, err, id) {
+  const user = await requireAuth(request, env);
+  if (!user) return err("Authentication required", 401);
+  const body = await request.json().catch(() => null);
+  if (!body) return err("Missing body");
+  const kv = env.ZTDC_KV;
+  if (!kv) return err("Storage not configured", 503);
+  const key = "profiles:" + user.sub;
+  const profiles = (await kv.get(key, "json")) || {};
+  if (!profiles[id]) return err("Profile not found", 404);
+  profiles[id] = { ...profiles[id], ...body, id, updated: new Date().toISOString() };
+  await kv.put(key, JSON.stringify(profiles));
+  return json(profiles[id]);
+}
+
+async function handleDeleteProfile(request, env, json, err, id) {
+  const user = await requireAuth(request, env);
+  if (!user) return err("Authentication required", 401);
+  const kv = env.ZTDC_KV;
+  if (!kv) return err("Storage not configured", 503);
+  const key = "profiles:" + user.sub;
+  const profiles = (await kv.get(key, "json")) || {};
+  if (!profiles[id]) return err("Profile not found", 404);
+  delete profiles[id];
+  await kv.put(key, JSON.stringify(profiles));
+  return json({ deleted: true, id });
+}

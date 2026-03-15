@@ -1,0 +1,199 @@
+# agents.txt — Zero-Trust Deploy Config API
+# https://joshuawink.github.io/zero-trust-deploy-config/
+#
+# Machine-readable API discovery for automation, scripts, and AI agents.
+# Human-readable docs: /api-docs.html
+#
+# This project validates deployment configurations against platform contracts
+# and exports them in 17+ formats. All read-only data is static JSON served
+# from GitHub Pages. Compute operations (validate, export, profile CRUD)
+# are handled by a Cloudflare Worker API.
+
+agent-name: ztdc
+version: 0.3.0
+homepage: https://joshuawink.github.io/zero-trust-deploy-config/
+source: https://github.com/JoshuaWink/zero-trust-deploy-config
+license: MIT
+
+# ═══════════════════════════════════════════════════════════
+# STATIC ENDPOINTS (GitHub Pages — no auth required)
+# Base: https://joshuawink.github.io/zero-trust-deploy-config
+# ═══════════════════════════════════════════════════════════
+
+# Contract catalog — 23 platform deployment contracts
+endpoint: GET /contracts/index.json
+  description: List all platform contract IDs
+  auth: none
+  example: curl -s https://joshuawink.github.io/zero-trust-deploy-config/contracts/index.json | jq .
+
+endpoint: GET /contracts/{id}.json
+  description: Get a single platform contract with required vars, limits, naming rules
+  auth: none
+  params: id — contract slug (e.g. aws-lambda, kubernetes, vercel)
+  example: curl -s https://joshuawink.github.io/zero-trust-deploy-config/contracts/aws-lambda.json | jq .
+
+endpoint: GET /contracts/_schema.json
+  description: JSON schema for contract files
+  auth: none
+
+# Recipe catalog — deployment workflow recipes
+endpoint: GET /recipes/index.json
+  description: List all recipe IDs
+  auth: none
+  example: curl -s https://joshuawink.github.io/zero-trust-deploy-config/recipes/index.json | jq .
+
+endpoint: GET /recipes/{id}.json
+  description: Get a recipe (multi-step deployment workflow)
+  auth: none
+  params: id — recipe slug (e.g. serverless-aws, fullstack-k8s)
+  example: curl -s https://joshuawink.github.io/zero-trust-deploy-config/recipes/serverless-aws.json | jq .
+
+endpoint: GET /recipes/_schema.json
+  description: JSON schema for recipe files
+  auth: none
+
+# Discovery
+endpoint: GET /agents.txt
+  description: This file — API discovery document
+  auth: none
+
+# ═══════════════════════════════════════════════════════════
+# COMPUTE ENDPOINTS (Cloudflare Worker)
+# Base: https://ztdc-github-oauth.orchie.workers.dev
+# ═══════════════════════════════════════════════════════════
+
+# --- Authentication ---
+
+endpoint: POST /auth/github
+  description: Exchange GitHub OAuth code for user identity (no token returned)
+  auth: none (public — initiates auth flow)
+  body: {"code": "github_oauth_code"}
+  returns: {"user_id": 12345, "login": "user", "name": "Name", "avatar_url": "..."}
+  example: curl -X POST https://ztdc-github-oauth.orchie.workers.dev/auth/github -H "Content-Type: application/json" -d '{"code":"OAUTH_CODE"}'
+
+endpoint: POST /auth/token
+  description: Exchange user identity for a session token (Bearer token for API calls)
+  auth: none (public — called after OAuth)
+  body: {"provider": "github", "user_id": "12345"}
+  returns: {"token": "ztdc_...", "expires_in": 86400}
+
+# --- Validation ---
+
+endpoint: POST /api/v1/validate
+  description: Validate a profile against its platform contract
+  auth: Bearer token (optional — works without auth for public contracts)
+  body: {"platform": "aws-lambda", "vars": [{"key": "AWS_REGION", "value": "us-east-1"}]}
+  returns: {"valid": true, "errors": [], "warnings": [], "rules_checked": ["required-vars", "naming", "limits"]}
+  example: |
+    curl -X POST https://ztdc-github-oauth.orchie.workers.dev/api/v1/validate \
+      -H "Content-Type: application/json" \
+      -d '{"platform":"aws-lambda","vars":[{"key":"AWS_REGION","value":"us-east-1"},{"key":"AWS_LAMBDA_FUNCTION_NAME","value":"my-fn"}]}'
+
+# --- Export ---
+
+endpoint: POST /api/v1/export
+  description: Export a profile in any supported format
+  auth: Bearer token (optional)
+  body: {"platform": "aws-lambda", "name": "my-profile", "vars": [...], "format": "env"}
+  formats: env, docker-compose, github-actions, k8s-configmap, k8s-secret, ecs, lambda, heroku, fly-toml, railway, render, netlify, terraform, circleci, gitlab-ci, wrangler, nomad
+  returns: {"format": "env", "content": "AWS_REGION=us-east-1\n...", "filename": "my-profile.env"}
+  example: |
+    curl -X POST https://ztdc-github-oauth.orchie.workers.dev/api/v1/export \
+      -H "Content-Type: application/json" \
+      -d '{"platform":"aws-lambda","name":"prod","vars":[{"key":"AWS_REGION","value":"us-east-1"}],"format":"env"}'
+
+# --- Profiles (CRUD — requires auth) ---
+
+endpoint: GET /api/v1/profiles
+  description: List all profiles for the authenticated user
+  auth: Bearer token (required)
+  returns: [{"id": "...", "name": "...", "platform": "...", "vars": [...]}]
+  example: curl -s https://ztdc-github-oauth.orchie.workers.dev/api/v1/profiles -H "Authorization: Bearer YOUR_TOKEN" | jq .
+
+endpoint: GET /api/v1/profiles/{id}
+  description: Get a single profile by ID
+  auth: Bearer token (required)
+  returns: {"id": "...", "name": "...", "platform": "...", "vars": [...]}
+
+endpoint: POST /api/v1/profiles
+  description: Create a new profile
+  auth: Bearer token (required)
+  body: {"name": "prod-api", "platform": "aws-lambda", "vars": [{"key": "K", "value": "V", "secret": false}]}
+  returns: {"id": "generated-uuid", "name": "prod-api", ...}
+  example: |
+    curl -X POST https://ztdc-github-oauth.orchie.workers.dev/api/v1/profiles \
+      -H "Authorization: Bearer YOUR_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d '{"name":"prod-api","platform":"aws-lambda","vars":[{"key":"AWS_REGION","value":"us-east-1","secret":false}]}'
+
+endpoint: PUT /api/v1/profiles/{id}
+  description: Update an existing profile
+  auth: Bearer token (required)
+  body: {"name": "...", "platform": "...", "vars": [...]}
+  returns: {"id": "...", "name": "...", ...}
+
+endpoint: DELETE /api/v1/profiles/{id}
+  description: Delete a profile
+  auth: Bearer token (required)
+  returns: {"deleted": true}
+
+# --- Recipes (CRUD for custom recipes — requires auth) ---
+
+endpoint: GET /api/v1/recipes/custom
+  description: List user's custom recipes
+  auth: Bearer token (required)
+
+endpoint: POST /api/v1/recipes/custom
+  description: Create a custom recipe
+  auth: Bearer token (required)
+  body: {"name": "...", "description": "...", "steps": [...]}
+
+endpoint: DELETE /api/v1/recipes/custom/{id}
+  description: Delete a custom recipe
+  auth: Bearer token (required)
+
+# ═══════════════════════════════════════════════════════════
+# QUICK START — Common scripting workflows
+# ═══════════════════════════════════════════════════════════
+
+# 1. Browse available platforms
+#    curl -s .../contracts/index.json | jq -r '.contracts[]'
+
+# 2. Check what AWS Lambda needs
+#    curl -s .../contracts/aws-lambda.json | jq '.required_vars'
+
+# 3. Validate your config
+#    curl -X POST .../api/v1/validate -H "Content-Type: application/json" \
+#      -d '{"platform":"aws-lambda","vars":[{"key":"AWS_REGION","value":"us-east-1"}]}'
+
+# 4. Export as .env file
+#    curl -X POST .../api/v1/export -H "Content-Type: application/json" \
+#      -d '{"platform":"aws-lambda","name":"prod","vars":[...],"format":"env"}' | jq -r '.content' > prod.env
+
+# 5. Export as Kubernetes ConfigMap
+#    curl -X POST .../api/v1/export -H "Content-Type: application/json" \
+#      -d '{"platform":"kubernetes","name":"prod","vars":[...],"format":"k8s-configmap"}' | jq -r '.content' > configmap.yaml
+
+# ═══════════════════════════════════════════════════════════
+# RATE LIMITS
+# ═══════════════════════════════════════════════════════════
+# Static endpoints (GH Pages): No rate limit (CDN-cached)
+# Compute endpoints (CF Worker): 100,000 requests/day (Cloudflare free tier)
+# Authenticated endpoints: 1,000 requests/hour per user
+
+# ═══════════════════════════════════════════════════════════
+# CONTENT TYPES
+# ═══════════════════════════════════════════════════════════
+# All compute endpoints accept: application/json
+# All compute endpoints return: application/json
+# Static endpoints return: application/json (GH Pages default for .json)
+
+# ═══════════════════════════════════════════════════════════
+# ERRORS
+# ═══════════════════════════════════════════════════════════
+# 400: {"error": "description", "details": {...}}
+# 401: {"error": "Authentication required"}
+# 403: {"error": "Forbidden"}
+# 404: {"error": "Not found"}
+# 429: {"error": "Rate limit exceeded", "retry_after": 60}
+# 500: {"error": "Internal error"}

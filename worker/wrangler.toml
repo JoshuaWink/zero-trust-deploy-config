@@ -6,5 +6,10 @@ compatibility_date = "2024-01-01"
 GITHUB_CLIENT_ID = "Ov23li9hz28NBeUUDZCr"
 ALLOWED_ORIGIN = "https://joshuawink.github.io"
 
-# Secret set via: wrangler secret put GITHUB_CLIENT_SECRET
-# NEVER put the secret in this file
+# Secrets set via: wrangler secret put <NAME>
+# GITHUB_CLIENT_SECRET — GitHub OAuth App secret
+# TOKEN_SECRET — HMAC signing key for session JWTs
+
+[[kv_namespaces]]
+binding = "ZTDC_KV"
+id = "404a831f10504e1e9d2306e57310c601"

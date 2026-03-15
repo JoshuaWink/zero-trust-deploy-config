@@ -354,6 +354,61 @@
       <div class="pgrid" id="plat-grid"></div>
     </div>
   </div>
+
+  <!-- API & Automation -->
+  <div class="card" style="border-top: 3px solid var(--accent);">
+    <div class="flex-b" style="flex-direction:row; align-items:center; margin-bottom:10px;">
+      <h3 style="margin:0;">🤖 API &amp; Automation</h3>
+      <a href="agents.txt" target="_blank" class="btn btn-s" style="text-decoration:none; font-size:11px;">agents.txt</a>
+    </div>
+    <p class="muted" style="font-size:12px; margin-bottom:12px;">
+      Everything in this UI is also available as a JSON API. Read-only data is served as static JSON from GitHub Pages.
+      Validation, export, and profile CRUD are handled by a Cloudflare Worker API.
+    </p>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+      <div style="background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:10px;">
+        <div style="font-size:11px; font-weight:600; margin-bottom:6px;">📄 Static Endpoints <span class="muted">(no auth)</span></div>
+        <code style="font-size:10px; display:block; line-height:1.6;">
+          GET /contracts/index.json<br>
+          GET /contracts/{id}.json<br>
+          GET /recipes/index.json<br>
+          GET /recipes/{id}.json<br>
+          GET /agents.txt
+        </code>
+      </div>
+      <div style="background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:10px;">
+        <div style="font-size:11px; font-weight:600; margin-bottom:6px;">⚡ Compute Endpoints</div>
+        <code style="font-size:10px; display:block; line-height:1.6;">
+          POST /api/v1/validate<br>
+          POST /api/v1/export<br>
+          GET|POST /api/v1/profiles<br>
+          PUT|DELETE /api/v1/profiles/{id}<br>
+          POST /auth/github
+        </code>
+      </div>
+    </div>
+
+    <div style="background:#0d1117; border:1px solid var(--border); border-radius:var(--radius); padding:12px; overflow-x:auto;">
+      <div style="font-size:10px; color:var(--muted); margin-bottom:6px;">Quick start — try these in your terminal:</div>
+      <pre style="margin:0; font-size:11px; line-height:1.5; white-space:pre; color:#e6edf3;"><span style="color:#8b949e;"># List all platforms</span>
+curl -s https://joshuawink.github.io/zero-trust-deploy-config/contracts/index.json | jq -r '.contracts[]'
+
+<span style="color:#8b949e;"># Check what Kubernetes requires</span>
+curl -s https://joshuawink.github.io/zero-trust-deploy-config/contracts/kubernetes.json | jq '.required_vars'
+
+<span style="color:#8b949e;"># Validate a config</span>
+curl -sX POST https://ztdc-github-oauth.orchie.workers.dev/api/v1/validate \
+  -H "Content-Type: application/json" \
+  -d '{"platform":"kubernetes","vars":[{"key":"APP_ENV","value":"prod"}]}'
+
+<span style="color:#8b949e;"># Export as .env file</span>
+curl -sX POST https://ztdc-github-oauth.orchie.workers.dev/api/v1/export \
+  -H "Content-Type: application/json" \
+  -d '{"platform":"kubernetes","name":"prod","vars":[{"key":"APP_ENV","value":"prod"}],"format":"env"}' \
+  | jq -r '.content' > prod.env</pre>
+    </div>
+  </div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════════
