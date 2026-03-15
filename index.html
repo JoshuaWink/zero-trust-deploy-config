@@ -19,6 +19,7 @@
   header {
     background: var(--surface); border-bottom: 1px solid var(--border);
     padding: 16px 24px; display: flex; align-items: center; gap: 16px;
+    flex-wrap: wrap;
   }
   header h1 { font-size: 20px; font-weight: 600; }
   header .badge {
@@ -28,11 +29,12 @@
   nav {
     display: flex; gap: 0; background: var(--surface);
     border-bottom: 1px solid var(--border); padding: 0 24px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
   }
   nav button {
     background: none; border: none; color: var(--muted); padding: 12px 20px;
     cursor: pointer; font-size: 14px; border-bottom: 2px solid transparent;
-    transition: all 0.15s;
+    transition: all 0.15s; white-space: nowrap;
   }
   nav button:hover { color: var(--text); }
   nav button.active { color: var(--accent); border-bottom-color: var(--accent); }
@@ -111,6 +113,69 @@
   .copy-btn:hover { background: var(--accent); color: var(--bg); }
   .hidden { display: none; }
   footer { text-align: center; padding: 24px; color: var(--muted); font-size: 12px; }
+
+  /* ── Preview tab ──────────────────────────────────────────── */
+  .preview-summary-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px; margin-bottom: 16px;
+  }
+  .preview-stat {
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 12px; text-align: center;
+  }
+  .preview-stat .pv-value { font-size: 20px; font-weight: 700; }
+  .preview-stat .pv-label { font-size: 11px; color: var(--muted); text-transform: uppercase; margin-top: 2px; }
+  .preview-format-tabs {
+    display: flex; gap: 0; border-bottom: 1px solid var(--border);
+    overflow-x: auto; margin-bottom: 0; flex-wrap: nowrap;
+  }
+  .preview-format-tabs button {
+    background: none; border: none; color: var(--muted); padding: 8px 14px;
+    cursor: pointer; font-size: 12px; white-space: nowrap;
+    border-bottom: 2px solid transparent; transition: all 0.15s;
+  }
+  .preview-format-tabs button:hover { color: var(--text); }
+  .preview-format-tabs button.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .preview-code-panel { display: none; }
+  .preview-code-panel.active { display: block; }
+
+  /* ── Mobile responsive ────────────────────────────────────── */
+  @media (max-width: 768px) {
+    header { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
+    header h1 { font-size: 17px; }
+    header .badge { font-size: 10px; }
+    nav { padding: 0 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    nav button { padding: 10px 12px; font-size: 12px; white-space: nowrap; }
+    main { padding: 16px; }
+    .card { padding: 14px; }
+    .card h2 { font-size: 16px; }
+    .grid { grid-template-columns: 1fr; }
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .form-row-inline { flex-direction: column; gap: 8px; }
+    .form-row-inline > * { flex: unset; width: 100%; }
+    .var-entry .form-row-inline { flex-direction: column; }
+    .var-entry .form-row-inline > div[style*="flex:0"] { flex: unset !important; width: 100%; }
+    .flex-between { flex-direction: column; align-items: stretch; gap: 8px; }
+    table { font-size: 12px; display: block; overflow-x: auto; }
+    th, td { padding: 6px 8px; white-space: nowrap; }
+    pre { font-size: 11px; padding: 10px; }
+    .preview-summary-grid { grid-template-columns: repeat(2, 1fr); }
+    .preview-format-tabs button { padding: 8px 10px; font-size: 11px; }
+    .result-box { padding: 14px; }
+    .issue-list li { padding: 6px 8px; font-size: 12px; }
+    footer { padding: 16px; font-size: 11px; }
+  }
+
+  @media (max-width: 480px) {
+    header h1 { font-size: 15px; }
+    .stat-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat .value { font-size: 22px; }
+    .stat .label { font-size: 10px; }
+    .card { padding: 12px; margin-bottom: 12px; }
+    nav button { padding: 8px 10px; font-size: 11px; }
+    .preview-summary-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .tag { font-size: 10px; padding: 1px 6px; }
+  }
 </style>
 </head>
 <body>
@@ -118,7 +183,7 @@
 <header>
   <h1>🔐 Zero-Trust Deploy Config</h1>
   <span class="badge">STATIC</span>
-  <span style="color: var(--muted); font-size: 13px; margin-left: auto;">
+  <span style="color: var(--muted); font-size: 13px; margin-left: auto; white-space: nowrap;">
     Contracts: <span id="contract-count">—</span> |
     Profiles: <span id="profile-count">—</span>
   </span>
@@ -128,6 +193,7 @@
   <button data-tab="dashboard" class="active">Dashboard</button>
   <button data-tab="platforms">Platforms</button>
   <button data-tab="profiles">Profiles</button>
+  <button data-tab="preview">Preview</button>
   <button data-tab="validate">Validate</button>
   <button data-tab="export">Export</button>
   <button data-tab="submit">Submit Contract</button>
@@ -162,22 +228,26 @@
       <p style="color: var(--muted); font-size: 14px; margin-bottom: 14px;">
         Demo profiles loaded! Follow these steps to explore every feature:
       </p>
-      <div id="walkthrough-steps" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;">
+      <div id="walkthrough-steps" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px;">
         <div class="walkthrough-step" style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; cursor: pointer;" onclick="goToTab('platforms')">
           <div style="font-size: 1.3rem; margin-bottom: 4px;">1️⃣ Platforms</div>
-          <p style="color: var(--muted); font-size: 13px; margin: 0;">Browse 8 deployment targets — see naming rules, limits, and supported backends for each.</p>
+          <p style="color: var(--muted); font-size: 13px; margin: 0;">Browse 8 deployment targets — see naming rules, limits, and supported backends.</p>
         </div>
         <div class="walkthrough-step" style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; cursor: pointer;" onclick="goToTab('profiles')">
           <div style="font-size: 1.3rem; margin-bottom: 4px;">2️⃣ Profiles</div>
-          <p style="color: var(--muted); font-size: 13px; margin: 0;">See the 4 demo profiles — a K8s deploy, a Vercel app, an ECS service, and one with intentional errors.</p>
+          <p style="color: var(--muted); font-size: 13px; margin: 0;">See the 4 demo profiles — K8s, Vercel, ECS, and one with intentional errors.</p>
+        </div>
+        <div class="walkthrough-step" style="background: var(--bg); border: 1px solid var(--accent); border-radius: 8px; padding: 14px; cursor: pointer;" onclick="goToTab('preview')">
+          <div style="font-size: 1.3rem; margin-bottom: 4px;">3️⃣ Preview ⭐</div>
+          <p style="color: var(--muted); font-size: 13px; margin: 0;">Instantly see validation + every export format. Try <strong>"saas-api-prod"</strong> (✅) then <strong>"broken-deploy"</strong> (❌).</p>
         </div>
         <div class="walkthrough-step" style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; cursor: pointer;" onclick="goToTab('validate')">
-          <div style="font-size: 1.3rem; margin-bottom: 4px;">3️⃣ Validate</div>
-          <p style="color: var(--muted); font-size: 13px; margin: 0;">Run validation on each profile. <strong>"saas-api-prod"</strong> passes clean. <strong>"broken-deploy"</strong> lights up with errors.</p>
+          <div style="font-size: 1.3rem; margin-bottom: 4px;">4️⃣ Validate</div>
+          <p style="color: var(--muted); font-size: 13px; margin: 0;">Deep-dive into validation results with full rule-by-rule breakdown.</p>
         </div>
         <div class="walkthrough-step" style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; cursor: pointer;" onclick="goToTab('export')">
-          <div style="font-size: 1.3rem; margin-bottom: 4px;">4️⃣ Export</div>
-          <p style="color: var(--muted); font-size: 13px; margin: 0;">Generate deploy configs — K8s Secret YAML, GitHub Actions YAML, ECS task defs, .env files, and more.</p>
+          <div style="font-size: 1.3rem; margin-bottom: 4px;">5️⃣ Export</div>
+          <p style="color: var(--muted); font-size: 13px; margin: 0;">Pick a specific format and generate deployment-ready config to copy.</p>
         </div>
       </div>
     </div>
@@ -259,6 +329,29 @@
         <button class="btn secondary" onclick="cancelProfileForm()">Cancel</button>
       </div>
     </div>
+  </div>
+
+  <!-- ═══ PREVIEW ═══ -->
+  <div id="tab-preview" class="tab">
+    <div class="card">
+      <h2>👁️ Profile Preview</h2>
+      <p style="color: var(--muted); font-size: 13px; margin-bottom: 12px;">
+        Select a profile to instantly see its validation status and every export format — no clicks required.
+      </p>
+      <div class="form-row">
+        <label>Profile</label>
+        <select id="prev-profile" onchange="renderPreview()"></select>
+      </div>
+    </div>
+
+    <!-- Preview: Summary Card -->
+    <div id="preview-summary"></div>
+
+    <!-- Preview: Validation Badge -->
+    <div id="preview-validation"></div>
+
+    <!-- Preview: All Exports -->
+    <div id="preview-exports"></div>
   </div>
 
   <!-- ═══ VALIDATE ═══ -->
@@ -366,6 +459,8 @@ function setupNav() {
       document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
       // Refresh selects when switching tabs
       populateSelects();
+      // Auto-render preview when switching to it
+      if (btn.dataset.tab === "preview") renderPreview();
     });
   });
 }
@@ -897,7 +992,7 @@ function populateSelects() {
     ? profileIds.map(id => `<option value="${esc(id)}">${esc(profiles[id].name)} (${esc(id)})</option>`).join("")
     : `<option value="">No profiles — create one first</option>`;
 
-  ["val-profile", "exp-profile"].forEach(selId => {
+  ["val-profile", "exp-profile", "prev-profile"].forEach(selId => {
     const sel = document.getElementById(selId);
     if (sel) sel.innerHTML = optionsHtml;
   });
@@ -924,6 +1019,144 @@ function updateExportFormats() {
   fmtSel.innerHTML = allFormats.sort().map(f =>
     `<option value="${esc(f)}">${esc(f)}</option>`
   ).join("");
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   ACTIONS: PREVIEW
+   ══════════════════════════════════════════════════════════════════════ */
+function renderPreview() {
+  const profileId = document.getElementById("prev-profile").value;
+  const profile = profiles[profileId];
+  const summaryDiv = document.getElementById("preview-summary");
+  const validDiv = document.getElementById("preview-validation");
+  const exportsDiv = document.getElementById("preview-exports");
+
+  if (!profile) {
+    summaryDiv.innerHTML = "";
+    validDiv.innerHTML = "";
+    exportsDiv.innerHTML = `<div class="card"><div class="empty">Select a profile above to see its preview.</div></div>`;
+    return;
+  }
+
+  const contract = contracts[profile.platform] || {};
+  const contractName = contract.name || profile.platform;
+  const requiredCount = profile.vars.filter(v => v.required).length;
+  const optionalCount = profile.vars.filter(v => !v.required).length;
+  const backends = [...new Set(profile.vars.map(v => v.secret_ref.backend))];
+
+  // ── Summary Card ──
+  summaryDiv.innerHTML = `
+    <div class="card">
+      <h3 style="margin-bottom: 10px;">${esc(profile.name)}</h3>
+      <div class="preview-summary-grid">
+        <div class="preview-stat"><div class="pv-value" style="color:var(--accent);">${esc(contractName)}</div><div class="pv-label">Platform</div></div>
+        <div class="preview-stat"><div class="pv-value">${esc(profile.environment)}</div><div class="pv-label">Environment</div></div>
+        <div class="preview-stat"><div class="pv-value">${profile.vars.length}</div><div class="pv-label">Total Vars</div></div>
+        <div class="preview-stat"><div class="pv-value" style="color:var(--warn);">${requiredCount}</div><div class="pv-label">Required</div></div>
+        <div class="preview-stat"><div class="pv-value">${optionalCount}</div><div class="pv-label">Optional</div></div>
+        <div class="preview-stat"><div class="pv-value">${backends.length}</div><div class="pv-label">Backends</div></div>
+      </div>
+      <div style="margin-top: 4px;">
+        ${backends.map(b => `<span class="tag info">${esc(b)}</span>`).join(" ")}
+      </div>
+    </div>`;
+
+  // ── Validation Badge ──
+  if (contract.id) {
+    const result = validate(profile, contract);
+    const statusClass = result.valid ? "valid" : "invalid";
+    const icon = result.valid ? "✅" : "❌";
+    const summaryText = result.valid
+      ? "All checks passed — ready to deploy."
+      : `${result.error_count} error(s), ${result.warning_count} warning(s)`;
+
+    let issuesHtml = "";
+    if (result.issues.length) {
+      issuesHtml = `<ul class="issue-list" style="margin-top: 10px;">
+        ${result.issues.slice(0, 8).map(i => `
+          <li>
+            <span class="tag ${i.severity === 'error' ? 'error' : 'warn'}">${esc(i.severity)}</span>
+            <span class="tag info">${esc(i.rule)}</span>
+            ${i.key ? `<code>${esc(i.key)}</code> — ` : ""}
+            ${esc(i.message)}
+          </li>`).join("")}
+        ${result.issues.length > 8 ? `<li style="color:var(--muted);">...and ${result.issues.length - 8} more. See Validate tab for full details.</li>` : ""}
+      </ul>`;
+    }
+
+    validDiv.innerHTML = `
+      <div class="result-box ${statusClass}">
+        <div class="flex-between" style="flex-direction:row; align-items:center;">
+          <h3 style="margin:0;">${icon} Validation: ${result.valid ? "Pass" : "Fail"}</h3>
+          <span style="font-size:12px; color:var(--muted);">${esc(summaryText)}</span>
+        </div>
+        ${issuesHtml}
+      </div>`;
+  } else {
+    validDiv.innerHTML = `<div class="result-box" style="background:var(--surface); border:1px solid var(--border);">
+      <span style="color:var(--muted);">⚠️ No contract loaded for platform "${esc(profile.platform)}" — cannot validate.</span>
+    </div>`;
+  }
+
+  // ── All Exports ──
+  const formats = contract.export_formats ? [...new Set([...contract.export_formats, "env-file"])] : ["env-file"];
+  const availableFormats = formats.filter(f => FORMATTERS[f]).sort();
+
+  if (!availableFormats.length) {
+    exportsDiv.innerHTML = `<div class="card"><div class="empty">No export formats available for this platform.</div></div>`;
+    return;
+  }
+
+  let tabsHtml = `<div class="preview-format-tabs" id="preview-fmt-tabs">`;
+  let panelsHtml = "";
+  availableFormats.forEach((fmt, i) => {
+    const activeClass = i === 0 ? " active" : "";
+    tabsHtml += `<button class="${activeClass}" data-fmt="${esc(fmt)}" onclick="switchPreviewFormat(this)">${esc(fmt)}</button>`;
+    const output = FORMATTERS[fmt](profile);
+    panelsHtml += `
+      <div class="preview-code-panel${activeClass}" data-fmt="${esc(fmt)}">
+        <div style="display:flex; justify-content:flex-end; padding: 8px 12px 0;">
+          <button class="copy-btn" onclick="copyPreviewCode(this)">📋 Copy</button>
+        </div>
+        <pre style="margin-top:0; border-top:none; border-radius: 0 0 var(--radius) var(--radius);"><code>${esc(output)}</code></pre>
+      </div>`;
+  });
+  tabsHtml += `</div>`;
+
+  exportsDiv.innerHTML = `
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div style="padding: 14px 16px 0;">
+        <h3 style="margin-bottom: 8px;">📄 Export Previews</h3>
+        <p style="font-size:12px; color:var(--muted); margin-bottom: 10px;">
+          ${availableFormats.length} format${availableFormats.length > 1 ? "s" : ""} available for ${esc(contractName)}.
+          These are deployment-ready — just copy and use.
+        </p>
+      </div>
+      ${tabsHtml}
+      ${panelsHtml}
+    </div>`;
+}
+
+function switchPreviewFormat(btn) {
+  const fmt = btn.dataset.fmt;
+  // Update tabs
+  btn.closest(".preview-format-tabs").querySelectorAll("button").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  // Update panels
+  const container = document.getElementById("preview-exports");
+  container.querySelectorAll(".preview-code-panel").forEach(p => p.classList.remove("active"));
+  const panel = container.querySelector(`.preview-code-panel[data-fmt="${fmt}"]`);
+  if (panel) panel.classList.add("active");
+}
+
+function copyPreviewCode(btn) {
+  const pre = btn.closest(".preview-code-panel").querySelector("code");
+  if (pre) {
+    navigator.clipboard.writeText(pre.textContent).then(() => {
+      btn.textContent = "✅ Copied!";
+      setTimeout(() => btn.textContent = "📋 Copy", 1500);
+    });
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -1260,6 +1493,7 @@ function goToTab(tabName) {
   const tab = document.getElementById("tab-" + tabName);
   if (tab) tab.classList.add("active");
   populateSelects();
+  if (tabName === "preview") renderPreview();
 }
 </script>
 </body>
