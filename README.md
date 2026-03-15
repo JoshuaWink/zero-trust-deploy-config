@@ -6,10 +6,10 @@ A **zero-trust** deployment configuration router — define your environment var
 
 ## How It Works
 
-1. **Browse Platforms** — see supported deployment targets (Docker, K8s, AWS, GitHub Actions, etc.)
+1. **Browse Platforms** — see 23 supported deployment targets across 6 categories
 2. **Create Profiles** — choose a platform, add env vars with secret references (never actual values)
 3. **Validate** — run profiles against platform contracts to catch issues before deployment
-4. **Export** — generate deployment-ready config (env-file, K8s YAML, GitHub Actions, ECS task def, etc.)
+4. **Export** — generate deployment-ready config in 17 formats
 5. **Submit Contracts** — missing a platform? Submit a new contract via GitHub PR
 
 ## Zero-Trust Principles
@@ -19,27 +19,69 @@ A **zero-trust** deployment configuration router — define your environment var
 - **Profiles in localStorage.** Your data stays on your machine.
 - **Contracts are static JSON.** Served from GitHub Pages — auditable, versionable, community-reviewable.
 
-## Platform Contracts
+## Platform Contracts (23)
 
 | Platform | Category |
 |----------|----------|
 | Docker | container |
 | Docker Compose | container |
 | GitHub Actions | ci-cd |
+| CircleCI | ci-cd |
+| GitLab CI/CD | ci-cd |
 | AWS ECS | cloud |
 | AWS Lambda | cloud |
-| Kubernetes | orchestration |
+| AWS App Runner | cloud |
+| Google Cloud Run | cloud |
+| Terraform / OpenTofu | cloud |
 | Azure App Service | cloud |
-| Vercel | serverless |
+| Azure Functions | serverless |
+| GCP Cloud Functions | serverless |
+| Vercel | paas |
+| Heroku | paas |
+| Fly.io | paas |
+| Railway | paas |
+| Render | paas |
+| Netlify | paas |
+| DigitalOcean App Platform | paas |
+| Kubernetes | orchestration |
+| HashiCorp Nomad | orchestration |
+| Cloudflare Workers | edge |
 
-## Export Formats
+## Export Formats (17)
 
-- `.env` file
-- Docker Compose YAML
-- GitHub Actions YAML
-- K8s ConfigMap / Secret YAML
-- ECS Task Definition JSON
-- Lambda Environment JSON
+| Format | Use Case |
+|--------|----------|
+| `.env` file | Universal |
+| Docker Compose YAML | Container orchestration |
+| GitHub Actions YAML | CI/CD secrets |
+| CircleCI YAML | CircleCI environments |
+| GitLab CI YAML | GitLab CI/CD variables |
+| K8s ConfigMap YAML | Non-sensitive Kubernetes config |
+| K8s Secret YAML | Sensitive Kubernetes secrets |
+| ECS Task Definition JSON | AWS ECS container config |
+| Lambda Environment JSON | AWS Lambda env vars |
+| Heroku JSON | Heroku config vars |
+| Fly.io TOML | Fly.io [env] block |
+| Railway JSON | Railway variable export |
+| Render YAML | render.yaml envVars |
+| Netlify TOML | netlify.toml context blocks |
+| Terraform .tfvars | Terraform variable files |
+| Cloudflare Wrangler TOML | Workers [vars] config |
+| Nomad HCL | Nomad job env stanza |
+
+## Demo Profiles (7)
+
+Load demos from the app to try:
+
+| Demo | Platform | Notes |
+|------|----------|-------|
+| SaaS API — Production | Kubernetes | 8 vars, Vault + K8s secrets |
+| Startup Frontend — Vercel | Vercel | 5 vars, Vercel secrets |
+| Data Pipeline — ECS | AWS ECS | 6 vars, SSM + Secrets Manager |
+| ⚠️ Broken Deploy | GitHub Actions | 5 intentional errors |
+| Heroku API — PaaS | Heroku | 6 vars, Heroku + Doppler |
+| Edge Worker — Cloudflare | Cloudflare Workers | 4 vars, CF secrets |
+| Cloud Run API — GCP | Google Cloud Run | 6 vars, Secret Manager |
 
 ## Community Contracts
 
