@@ -137,6 +137,51 @@
   <!-- ═══ DASHBOARD ═══ -->
   <div id="tab-dashboard" class="tab active">
     <div class="stat-grid" id="stats"></div>
+
+    <!-- ── Demo Banner ──────────────────────────────────────── -->
+    <div class="card" id="demo-banner" style="border-color: var(--accent); background: linear-gradient(135deg, #161b22 0%, #1a2332 100%);">
+      <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 260px;">
+          <h2 style="margin-bottom: 6px;">🚀 Try the Live Demo</h2>
+          <p style="color: var(--muted); font-size: 14px; margin-bottom: 0;">
+            Load <strong>4 pre-built profiles</strong> to see validation, exports, and error detection in action.
+            Includes a passing deploy, a naming violation, a limits breach, and a backend mismatch — all the scenarios you'd hit in real life.
+          </p>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="btn" style="background: var(--accent); color: var(--bg); font-weight: 600; padding: 10px 20px;" onclick="loadDemoProfiles()">▶ Load Demo Profiles</button>
+          <button class="btn secondary" onclick="clearDemoProfiles()" style="padding: 10px 16px;">🗑 Clear Demos</button>
+        </div>
+      </div>
+      <div id="demo-loaded-msg" style="display:none; margin-top: 12px;"></div>
+    </div>
+
+    <!-- ── Guided Walkthrough ───────────────────────────────── -->
+    <div class="card" id="walkthrough-card" style="display:none;">
+      <h2>📍 Guided Walkthrough</h2>
+      <p style="color: var(--muted); font-size: 14px; margin-bottom: 14px;">
+        Demo profiles loaded! Follow these steps to explore every feature:
+      </p>
+      <div id="walkthrough-steps" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;">
+        <div class="walkthrough-step" style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; cursor: pointer;" onclick="goToTab('platforms')">
+          <div style="font-size: 1.3rem; margin-bottom: 4px;">1️⃣ Platforms</div>
+          <p style="color: var(--muted); font-size: 13px; margin: 0;">Browse 8 deployment targets — see naming rules, limits, and supported backends for each.</p>
+        </div>
+        <div class="walkthrough-step" style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; cursor: pointer;" onclick="goToTab('profiles')">
+          <div style="font-size: 1.3rem; margin-bottom: 4px;">2️⃣ Profiles</div>
+          <p style="color: var(--muted); font-size: 13px; margin: 0;">See the 4 demo profiles — a K8s deploy, a Vercel app, an ECS service, and one with intentional errors.</p>
+        </div>
+        <div class="walkthrough-step" style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; cursor: pointer;" onclick="goToTab('validate')">
+          <div style="font-size: 1.3rem; margin-bottom: 4px;">3️⃣ Validate</div>
+          <p style="color: var(--muted); font-size: 13px; margin: 0;">Run validation on each profile. <strong>"saas-api-prod"</strong> passes clean. <strong>"broken-deploy"</strong> lights up with errors.</p>
+        </div>
+        <div class="walkthrough-step" style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; cursor: pointer;" onclick="goToTab('export')">
+          <div style="font-size: 1.3rem; margin-bottom: 4px;">4️⃣ Export</div>
+          <p style="color: var(--muted); font-size: 13px; margin: 0;">Generate deploy configs — K8s Secret YAML, GitHub Actions YAML, ECS task defs, .env files, and more.</p>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <h2>What is This?</h2>
       <p style="color: var(--muted); font-size: 14px; margin-bottom: 12px;">
@@ -303,6 +348,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderPlatforms();
   renderProfiles();
   populateSelects();
+
+  // If demo profiles are present from a previous session, show the walkthrough
+  const hasDemos = Object.keys(DEMO_PROFILES).some(id => profiles[id]);
+  if (hasDemos) {
+    document.getElementById("walkthrough-card").style.display = "block";
+  }
 });
 
 /* ── Navigation ────────────────────────────────────────────────────── */
@@ -981,7 +1032,7 @@ async function submitContract() {
   }
 
   // Submit via GitHub API
-  const repo = "JoshuaWink/zero-trust-deploy-config";
+  const repo = "orchestrate-solutions/zero-trust-deploy-config";
   const branch = `contract/${contractData.id}-${Date.now()}`;
   const filePath = `contracts/${contractData.id}.json`;
   const commitMsg = `feat: add ${contractData.id} platform contract\n\nSubmitted by: ${user}\n${notes ? "Notes: " + notes : ""}`;
@@ -1078,6 +1129,137 @@ function esc(s) {
   const div = document.createElement("div");
   div.textContent = String(s);
   return div.innerHTML;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   DEMO PROFILES
+   ══════════════════════════════════════════════════════════════════════ */
+const DEMO_PROFILES = {
+  "saas-api-prod": {
+    id: "saas-api-prod",
+    name: "SaaS API — Production",
+    platform: "kubernetes",
+    environment: "production",
+    vars: [
+      { key: "DATABASE_URL", secret_ref: { backend: "hashicorp-vault", path: "secret/prod/postgres-url", version: null }, description: "Primary Postgres connection string", required: true },
+      { key: "REDIS_URL", secret_ref: { backend: "hashicorp-vault", path: "secret/prod/redis-url", version: null }, description: "Redis cache connection", required: true },
+      { key: "JWT_SECRET", secret_ref: { backend: "hashicorp-vault", path: "secret/prod/jwt-signing-key", version: null }, description: "JWT token signing key", required: true },
+      { key: "STRIPE_SECRET_KEY", secret_ref: { backend: "hashicorp-vault", path: "secret/prod/stripe-sk", version: null }, description: "Stripe API secret key", required: true },
+      { key: "SENDGRID_API_KEY", secret_ref: { backend: "hashicorp-vault", path: "secret/prod/sendgrid-key", version: null }, description: "SendGrid email API key", required: true },
+      { key: "S3_BUCKET", secret_ref: { backend: "aws-secrets-manager", path: "prod/s3-uploads-bucket", version: null }, description: "Upload storage bucket name", required: false },
+      { key: "LOG_LEVEL", secret_ref: { backend: "k8s-secret", path: "prod-config/log-level", version: null }, description: "Application log level", required: false },
+      { key: "CORS_ORIGINS", secret_ref: { backend: "k8s-secret", path: "prod-config/cors-origins", version: null }, description: "Allowed CORS origins", required: false },
+    ],
+    metadata: { demo: true },
+  },
+  "startup-frontend": {
+    id: "startup-frontend",
+    name: "Startup Frontend — Vercel",
+    platform: "vercel",
+    environment: "production",
+    vars: [
+      { key: "NEXT_PUBLIC_API_URL", secret_ref: { backend: "vercel-secrets", path: "api-url-prod", version: null }, description: "Public API endpoint", required: true },
+      { key: "NEXT_PUBLIC_STRIPE_PK", secret_ref: { backend: "vercel-secrets", path: "stripe-pk-prod", version: null }, description: "Stripe publishable key (client-safe)", required: true },
+      { key: "DATABASE_URL", secret_ref: { backend: "vercel-secrets", path: "neon-db-prod", version: null }, description: "Neon Postgres connection for API routes", required: true },
+      { key: "AUTH_SECRET", secret_ref: { backend: "vercel-secrets", path: "nextauth-secret", version: null }, description: "NextAuth.js session encryption key", required: true },
+      { key: "RESEND_API_KEY", secret_ref: { backend: "vercel-secrets", path: "resend-key-prod", version: null }, description: "Resend email service API key", required: false },
+    ],
+    metadata: { demo: true },
+  },
+  "ecs-worker": {
+    id: "ecs-worker",
+    name: "Data Pipeline Worker — ECS",
+    platform: "aws-ecs",
+    environment: "production",
+    vars: [
+      { key: "SQS_QUEUE_URL", secret_ref: { backend: "aws-ssm", path: "/prod/worker/sqs-queue-url", version: null }, description: "SQS queue for job intake", required: true },
+      { key: "DATABASE_URL", secret_ref: { backend: "aws-secrets-manager", path: "prod/worker/db-connection", version: null }, description: "RDS Postgres connection string", required: true },
+      { key: "S3_OUTPUT_BUCKET", secret_ref: { backend: "aws-ssm", path: "/prod/worker/s3-output-bucket", version: null }, description: "S3 bucket for processed output", required: true },
+      { key: "DATADOG_API_KEY", secret_ref: { backend: "aws-secrets-manager", path: "prod/shared/datadog-key", version: null }, description: "Datadog monitoring API key", required: true },
+      { key: "WORKER_CONCURRENCY", secret_ref: { backend: "aws-ssm", path: "/prod/worker/concurrency", version: null }, description: "Max concurrent job threads", required: false },
+      { key: "AWS_DEFAULT_REGION", secret_ref: { backend: "aws-ssm", path: "/prod/region", version: null }, description: "AWS region for SDK calls", required: false },
+    ],
+    metadata: { demo: true },
+  },
+  "broken-deploy": {
+    id: "broken-deploy",
+    name: "⚠️ Broken Deploy (Intentional Errors)",
+    platform: "github-actions",
+    environment: "staging",
+    vars: [
+      { key: "GITHUB_INTERNAL_TOKEN", secret_ref: { backend: "github-secrets", path: "internal-token", version: null }, description: "❌ Uses reserved GITHUB_ prefix", required: true },
+      { key: "db url", secret_ref: { backend: "github-secrets", path: "db-url", version: null }, description: "❌ Spaces in key name — invalid naming", required: true },
+      { key: "API_KEY", secret_ref: { backend: "hashicorp-vault", path: "staging/api-key", version: null }, description: "❌ Vault not supported on GitHub Actions", required: true },
+      { key: "VALID_SECRET", secret_ref: { backend: "github-secrets", path: "some-secret", version: null }, description: "✅ This one is fine", required: false },
+      { key: "API_KEY", secret_ref: { backend: "github-secrets", path: "duplicate-key", version: null }, description: "❌ Duplicate key name", required: false },
+    ],
+    metadata: { demo: true },
+  },
+};
+
+function loadDemoProfiles() {
+  let added = 0;
+  for (const [id, profile] of Object.entries(DEMO_PROFILES)) {
+    if (!profiles[id]) {
+      profiles[id] = JSON.parse(JSON.stringify(profile));
+      added++;
+    }
+  }
+  saveProfilesToStorage();
+  renderProfiles();
+  renderDashboard();
+  populateSelects();
+
+  // Show success message
+  const msg = document.getElementById("demo-loaded-msg");
+  if (added > 0) {
+    msg.style.display = "block";
+    msg.innerHTML = `<div style="background: #23863620; border: 1px solid #3fb950; border-radius: 8px; padding: 12px 16px; font-size: 14px; color: #3fb950;">
+      ✅ Loaded ${added} demo profile${added > 1 ? "s" : ""}! Follow the walkthrough below or explore on your own.
+    </div>`;
+  } else {
+    msg.style.display = "block";
+    msg.innerHTML = `<div style="background: #1f6feb20; border: 1px solid #58a6ff; border-radius: 8px; padding: 12px 16px; font-size: 14px; color: #58a6ff;">
+      Demo profiles already loaded. Clear them first to reload.
+    </div>`;
+  }
+
+  // Show walkthrough
+  document.getElementById("walkthrough-card").style.display = "block";
+}
+
+function clearDemoProfiles() {
+  let removed = 0;
+  for (const id of Object.keys(DEMO_PROFILES)) {
+    if (profiles[id]) {
+      delete profiles[id];
+      removed++;
+    }
+  }
+  saveProfilesToStorage();
+  renderProfiles();
+  renderDashboard();
+  populateSelects();
+
+  document.getElementById("walkthrough-card").style.display = "none";
+  const msg = document.getElementById("demo-loaded-msg");
+  if (removed > 0) {
+    msg.style.display = "block";
+    msg.innerHTML = `<div style="background: #9e6a0320; border: 1px solid #d29922; border-radius: 8px; padding: 12px 16px; font-size: 14px; color: #d29922;">
+      🗑 Removed ${removed} demo profile${removed > 1 ? "s" : ""}. Your custom profiles are untouched.
+    </div>`;
+    setTimeout(() => { msg.style.display = "none"; }, 3000);
+  }
+}
+
+function goToTab(tabName) {
+  document.querySelectorAll("#nav button").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  const btn = document.querySelector(`#nav button[data-tab="${tabName}"]`);
+  if (btn) btn.classList.add("active");
+  const tab = document.getElementById("tab-" + tabName);
+  if (tab) tab.classList.add("active");
+  populateSelects();
 }
 </script>
 </body>
