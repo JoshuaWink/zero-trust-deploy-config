@@ -262,12 +262,6 @@
   .security-method-tabs button { flex:1; padding:8px 12px; border:none; background:var(--bg); color:var(--muted); cursor:pointer; font-size:12px; font-weight:500; transition:all 0.2s; }
   .security-method-tabs button.active { background:var(--accent); color:#fff; }
   .security-method-tabs button:hover:not(.active) { background:#1f6feb10; }
-  .device-code-box { background:var(--bg); border:2px dashed var(--accent); border-radius:12px; padding:16px; text-align:center; margin:12px 0; }
-  .device-code-box .code { font-size:28px; font-weight:700; font-family:var(--mono); letter-spacing:4px; color:var(--accent); margin:8px 0; user-select:all; }
-  .device-code-box .steps { font-size:11px; color:var(--muted); text-align:left; padding-left:16px; }
-  .device-code-box .steps li { margin:4px 0; }
-  .device-poll { display:flex; align-items:center; gap:8px; justify-content:center; margin-top:8px; font-size:12px; color:var(--muted); }
-  .device-poll .spinner-sm { display:inline-block; width:14px; height:14px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; }
 
 
 </style>
@@ -2763,12 +2757,10 @@ function updateSecurityBar(encrypted) {
 
 const OAUTH_CONFIG = {
   github: {
-    clientId: "",           // OAuth App Client ID (NOT the secret)
-    deviceFlowClientId: "", // Same Client ID — Device Flow uses it too
-    // GitHub requires client_secret for code exchange, so we use Device Flow
-    // for zero-backend auth. Set clientId to enable.
+    clientId: "Ov23li9hz28NBeUUDZCr",
+    workerUrl: "https://ztdc-github-oauth.orchie.workers.dev",
     label: "GitHub",
-    get ready() { return !!(this.clientId || this.deviceFlowClientId); },
+    get ready() { return !!(this.clientId && this.workerUrl); },
   },
   google: {
     clientId: "",  // e.g. "123456789.apps.googleusercontent.com"
@@ -2860,29 +2852,20 @@ async function completeOAuthEncryption(provider, sub, displayInfo) {
   refreshAll();
 }
 
-// ═══════════════════════════════════════════════════════════════
-// GITHUB — Device Flow (no backend needed!)
-// ═══════════════════════════════════════════════════════════════
-//
-// Flow: POST /login/device/code → user gets a code → opens github.com/login/device
-//       → enters code → we poll POST /login/oauth/access_token → get token
-//       → GET /user → get stable user.id → derive encryption key
-//
-// This is the ONLY GitHub OAuth flow that works 100% client-side because
-// it doesn't require client_secret for the poll step on public clients.
-
-let _devicePollTimer = null;
+// ═══════════════════════════════════════════════════════════════════
+// OAUTH FLOW ROUTER
+// ═══════════════════════════════════════════════════════════════════
 
 async function startOAuthFlow(provider) {
   const errEl = document.getElementById("oauth-error");
   if (errEl) errEl.textContent = "";
 
   if (provider === "github") {
-    if (!OAUTH_CONFIG.github.clientId && !OAUTH_CONFIG.github.deviceFlowClientId) {
+    if (!OAUTH_CONFIG.github.ready) {
       showGitHubPATFallback(errEl);
       return;
     }
-    await startGitHubDeviceFlow();
+    await startGitHubPopupFlow();
   } else if (provider === "google") {
     if (!OAUTH_CONFIG.google.clientId) {
       if (errEl) errEl.innerHTML = 'Google OAuth requires a client ID. <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:var(--accent);">Register one here</a>, then set <code>OAUTH_CONFIG.google.clientId</code>.';
@@ -2898,152 +2881,113 @@ async function startOAuthFlow(provider) {
   }
 }
 
-// ── GitHub Device Flow ──
+// ═══════════════════════════════════════════════════════════════════
+// GITHUB — Popup Redirect Flow (via Cloudflare Worker proxy)
+// ═══════════════════════════════════════════════════════════════════
+//
+// Flow: User clicks → popup opens github.com/login/oauth/authorize
+//       → user authorizes → redirect to callback.html?code=xxx
+//       → callback.html postMessages code to parent window
+//       → parent sends code to CF Worker (which adds client_secret server-side)
+//       → Worker returns { user_id, login, name, avatar_url }
+//       → we derive encryption key from user_id
+//
+// The client_secret NEVER touches the browser. The access_token NEVER
+// touches the browser. Only the stable numeric user ID comes back.
 
-async function startGitHubDeviceFlow() {
+async function startGitHubPopupFlow() {
   const errEl = document.getElementById("oauth-error");
   const btn = document.getElementById("oauth-github-btn");
   if (btn) btn.disabled = true;
 
-  const clientId = OAUTH_CONFIG.github.deviceFlowClientId || OAUTH_CONFIG.github.clientId;
+  const clientId = OAUTH_CONFIG.github.clientId;
+  const state = generateState();
+
+  // Store state for CSRF verification
+  sessionStorage.setItem("ztdc_gh_oauth_state", state);
 
   try {
-    // Step 1: Request device code
-    // Note: GitHub's device/code endpoint supports CORS for OAuth Apps
-    const resp = await fetch("https://github.com/login/device/code", {
-      method: "POST",
-      headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        client_id: clientId,
-        scope: "read:user",
-      }),
-    });
+    // Step 1: Open popup to GitHub authorize
+    const authUrl = new URL("https://github.com/login/oauth/authorize");
+    authUrl.searchParams.set("client_id", clientId);
+    authUrl.searchParams.set("redirect_uri", CALLBACK_URL);
+    authUrl.searchParams.set("scope", "read:user");
+    authUrl.searchParams.set("state", state);
 
-    if (!resp.ok) throw new Error(`GitHub returned ${resp.status}`);
-    const data = await resp.json();
+    const popup = window.open(authUrl.toString(), "github-oauth", "width=500,height=700,popup=yes");
 
-    // data: { device_code, user_code, verification_uri, expires_in, interval }
-    const { device_code, user_code, verification_uri, interval, expires_in } = data;
-
-    // Step 2: Show the user code and open GitHub
-    const oauthDiv = document.getElementById("security-tab-oauth");
-    if (oauthDiv) {
-      // Replace buttons with device code UI
-      const codeUI = document.createElement("div");
-      codeUI.id = "gh-device-ui";
-      codeUI.innerHTML = `
-        <div class="device-code-box">
-          <p style="font-size:13px; margin:0 0 4px 0;">Enter this code at GitHub:</p>
-          <div class="code">${user_code}</div>
-          <ol class="steps">
-            <li>Click the button below (or go to <a href="${verification_uri}" target="_blank" style="color:var(--accent);">${verification_uri}</a>)</li>
-            <li>Paste the code: <strong>${user_code}</strong></li>
-            <li>Click <strong>Authorize</strong></li>
-            <li>Come back here — we'll detect it automatically</li>
-          </ol>
-          <a href="${verification_uri}?user_code=${user_code}" target="_blank" class="btn" style="display:inline-block; margin-top:8px; text-decoration:none;">Open GitHub →</a>
-        </div>
-        <div class="device-poll" id="gh-poll-status">
-          <span class="spinner-sm"></span> Waiting for authorization...
-        </div>
-      `;
-      // Hide the original buttons
-      const btns = oauthDiv.querySelector(".oauth-buttons");
-      if (btns) btns.style.display = "none";
-      oauthDiv.appendChild(codeUI);
+    if (!popup || popup.closed) {
+      throw new Error("Popup blocked — please allow popups for this site.");
     }
 
-    // Step 3: Poll for authorization
-    await pollGitHubDevice(clientId, device_code, interval || 5, expires_in || 900);
+    if (errEl) errEl.innerHTML = '<span style="color:var(--accent);">⏳ Waiting for GitHub authorization...</span>';
+
+    // Step 2: Listen for postMessage from callback.html
+    const code = await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        window.removeEventListener("message", handler);
+        reject(new Error("Authorization timed out (2 minutes). Please try again."));
+      }, 120000);
+
+      function handler(event) {
+        // Accept messages from our own origin (callback.html)
+        if (event.origin !== window.location.origin) return;
+
+        if (event.data && event.data.type === "ztdc-oauth-code") {
+          clearTimeout(timeout);
+          window.removeEventListener("message", handler);
+          if (popup && !popup.closed) popup.close();
+
+          // Verify state
+          if (event.data.state !== sessionStorage.getItem("ztdc_gh_oauth_state")) {
+            reject(new Error("OAuth state mismatch — possible CSRF. Please try again."));
+            return;
+          }
+          sessionStorage.removeItem("ztdc_gh_oauth_state");
+          resolve(event.data.code);
+        }
+
+        if (event.data && event.data.type === "ztdc-oauth-error") {
+          clearTimeout(timeout);
+          window.removeEventListener("message", handler);
+          if (popup && !popup.closed) popup.close();
+          reject(new Error(event.data.error || "Authorization denied"));
+        }
+      }
+
+      window.addEventListener("message", handler);
+    });
+
+    // Step 3: Exchange code via Cloudflare Worker (secret stays server-side)
+    if (errEl) errEl.innerHTML = '<span style="color:var(--accent);">⏳ Verifying your identity...</span>';
+
+    const workerResp = await fetch(OAUTH_CONFIG.github.workerUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+
+    const userData = await workerResp.json();
+
+    if (!workerResp.ok || userData.error) {
+      throw new Error(userData.error_description || userData.error || `Worker returned ${workerResp.status}`);
+    }
+
+    // Step 4: Derive key and encrypt
+    await completeOAuthEncryption("github", String(userData.user_id), {
+      username: userData.login,
+      avatarUrl: userData.avatar_url,
+      name: userData.name || userData.login,
+    });
 
   } catch (e) {
-    if (errEl) errEl.textContent = `GitHub Device Flow error: ${e.message}`;
+    if (errEl) errEl.textContent = `GitHub auth failed: ${e.message}`;
+  } finally {
     if (btn) btn.disabled = false;
-    cleanupDeviceUI();
+    sessionStorage.removeItem("ztdc_gh_oauth_state");
   }
 }
 
-async function pollGitHubDevice(clientId, deviceCode, interval, expiresIn) {
-  const deadline = Date.now() + expiresIn * 1000;
-  const pollStatus = document.getElementById("gh-poll-status");
-
-  const poll = async () => {
-    if (Date.now() > deadline) {
-      if (pollStatus) pollStatus.innerHTML = '<span style="color:var(--error);">⏰ Code expired. Please try again.</span>';
-      cleanupDeviceUI();
-      return;
-    }
-
-    try {
-      const resp = await fetch("https://github.com/login/oauth/access_token", {
-        method: "POST",
-        headers: {
-          "Accept": "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          client_id: clientId,
-          device_code: deviceCode,
-          grant_type: "urn:ietf:params:oauth:grant-type:device_code",
-        }),
-      });
-
-      const data = await resp.json();
-
-      if (data.error === "authorization_pending") {
-        // Keep polling
-        _devicePollTimer = setTimeout(poll, interval * 1000);
-        return;
-      }
-      if (data.error === "slow_down") {
-        // Increase interval
-        _devicePollTimer = setTimeout(poll, (interval + 5) * 1000);
-        return;
-      }
-      if (data.error) {
-        throw new Error(data.error_description || data.error);
-      }
-
-      // Success! We have an access_token
-      if (pollStatus) pollStatus.innerHTML = '<span style="color:var(--success);">✓ Authorized! Fetching your identity...</span>';
-
-      // Step 4: Get user info
-      const userResp = await fetch("https://api.github.com/user", {
-        headers: { "Authorization": `Bearer ${data.access_token}`, "Accept": "application/vnd.github+json" },
-      });
-      if (!userResp.ok) throw new Error(`GitHub API returned ${userResp.status}`);
-      const user = await userResp.json();
-
-      // Step 5: Derive key and encrypt
-      await completeOAuthEncryption("github", String(user.id), {
-        username: user.login,
-        avatarUrl: user.avatar_url,
-        name: user.name || user.login,
-      });
-
-      cleanupDeviceUI();
-
-    } catch (e) {
-      if (pollStatus) pollStatus.innerHTML = `<span style="color:var(--error);">Error: ${e.message}</span>`;
-      cleanupDeviceUI();
-    }
-  };
-
-  _devicePollTimer = setTimeout(poll, interval * 1000);
-}
-
-function cleanupDeviceUI() {
-  if (_devicePollTimer) { clearTimeout(_devicePollTimer); _devicePollTimer = null; }
-  const ui = document.getElementById("gh-device-ui");
-  if (ui) ui.remove();
-  const btns = document.querySelector("#security-tab-oauth .oauth-buttons");
-  if (btns) btns.style.display = "";
-  const btn = document.getElementById("oauth-github-btn");
-  if (btn) btn.disabled = false;
-}
 
 // ── GitHub PAT Fallback (when no OAuth App configured) ──
 
@@ -3280,7 +3224,7 @@ updateSecurityBar = function(encrypted, method, userInfo) {
 // ── Update OAuth button badges based on config ──
 function updateOAuthBadges() {
   const badges = [
-    { id: "gh-status-tag", ready: OAUTH_CONFIG.github.ready, fallback: "PAT fallback" },
+    { id: "gh-status-tag", ready: OAUTH_CONFIG.github.ready },
     { id: "google-status-tag", ready: OAUTH_CONFIG.google.ready },
     { id: "ms-status-tag", ready: OAUTH_CONFIG.microsoft.ready },
   ];
