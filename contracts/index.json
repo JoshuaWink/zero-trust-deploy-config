@@ -1,0 +1,13 @@
+{
+  "version": "0.1.0",
+  "contracts": [
+    "aws-ecs",
+    "aws-lambda",
+    "azure-app-service",
+    "docker",
+    "docker-compose",
+    "github-actions",
+    "kubernetes",
+    "vercel"
+  ]
+}
