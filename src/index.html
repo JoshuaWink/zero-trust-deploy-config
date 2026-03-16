@@ -296,7 +296,8 @@
   <span id="security-label">Data unencrypted — stored in plain text</span>
   <span id="security-user" style="font-size:10px; opacity:0.7;"></span>
   <span style="flex:1;"></span>
-  <button onclick="showSecurityModal('setup')">Encrypt Data</button>
+  <button id="security-signout-btn" style="display:none;" onclick="signOut()">Sign Out</button>
+  <button id="security-action-btn" onclick="showSecurityModal('setup')">Encrypt Data</button>
 </div>
 
 <main>
@@ -2696,6 +2697,88 @@ function closeSecurityModal() {
 }
 function closePassphraseModal() { closeSecurityModal(); }
 
+// ── Sign Out ──────────────────────────────────────────────────────
+// Clears the in-memory key and session cache — encrypted data stays
+// safely locked in localStorage. Shows a ciphertext preview as proof.
+async function signOut() {
+  const method = localStorage.getItem("ztdc_auth_method") || "passphrase";
+
+  // Clear in-memory session
+  _sessionKey = null;
+  _encryptionEnabled = false;
+
+  // Clear sessionStorage cache so refresh doesn't auto-restore
+  sessionStorage.removeItem("ztdc_oauth_provider");
+  sessionStorage.removeItem("ztdc_oauth_sub");
+
+  // Reset in-memory data to empty — the real data is still in localStorage (encrypted)
+  profiles = {};
+  customRecipes = {};
+
+  // Re-disable encrypted storage overrides (restore plain mode stubs)
+  saveProfiles = function() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
+    refreshAll();
+  };
+  saveCustomRecipes = function() {
+    localStorage.setItem(CUSTOM_RECIPES_KEY, JSON.stringify(customRecipes));
+    renderMyRecipes();
+  };
+
+  // Update security bar — show locked state
+  const bar = document.getElementById("security-bar");
+  const icon = document.getElementById("security-icon");
+  const label = document.getElementById("security-label");
+  const userSpan = document.getElementById("security-user");
+  const actionBtn = document.getElementById("security-action-btn");
+  const signoutBtn = document.getElementById("security-signout-btn");
+  if (bar) bar.className = "security-bar locked";
+  if (icon) icon.textContent = "🔐";
+  if (label) label.innerHTML = `Signed out — data is <strong>locked</strong>. Sign in again to access it.`;
+  if (userSpan) userSpan.textContent = "";
+  if (signoutBtn) signoutBtn.style.display = "none";
+  if (actionBtn) {
+    actionBtn.textContent = "Unlock";
+    actionBtn.onclick = () => showSecurityModal("unlock");
+  }
+
+  // Refresh UI (will show empty state since profiles/customRecipes are now {})
+  refreshAll();
+
+  // 🎉 Fun: show ciphertext preview to prove data is still locked safely
+  _showSignedOutCipherPreview(method);
+}
+
+function _showSignedOutCipherPreview(method) {
+  const rawProfiles = localStorage.getItem(STORAGE_KEY) || "";
+  const rawRecipes = localStorage.getItem(CUSTOM_RECIPES_KEY) || "";
+
+  const cipher1 = rawProfiles.startsWith("ztdc_enc:") ? rawProfiles.slice(9, 120) + "…" : null;
+  const cipher2 = rawRecipes.startsWith("ztdc_enc:") ? rawRecipes.slice(9, 80) + "…" : null;
+
+  if (!cipher1 && !cipher2) return; // Nothing encrypted to show
+
+  const toast = document.createElement("div");
+  toast.id = "signout-toast";
+  toast.style.cssText = "position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:16px 20px; max-width:560px; width:90%; font-size:12px; z-index:2000; box-shadow:0 8px 32px rgba(0,0,0,0.5); animation:_slideUp 0.25s ease;";
+  toast.innerHTML = `
+    <style>@keyframes _slideUp { from { opacity:0; transform:translateX(-50%) translateY(16px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }</style>
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+      <span style="font-size:20px;">🔐</span>
+      <div>
+        <div style="font-weight:600; color:var(--text);">Signed out of ${method}</div>
+        <div style="color:var(--muted); font-size:11px;">Your data is still here — locked inside these ciphertext blobs:</div>
+      </div>
+      <button onclick="document.getElementById('signout-toast').remove()" style="margin-left:auto; background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; padding:0 4px;">&times;</button>
+    </div>
+    ${cipher1 ? `<div style="background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:8px 10px; margin-bottom:6px;"><div style="color:var(--accent); font-size:10px; margin-bottom:3px; font-family:monospace;">ztdc_profiles (AES-256-GCM)</div><div style="font-family:monospace; font-size:10px; color:var(--muted); word-break:break-all; line-height:1.5;">${cipher1}</div></div>` : ""}
+    ${cipher2 ? `<div style="background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:8px 10px; margin-bottom:6px;"><div style="color:var(--accent); font-size:10px; margin-bottom:3px; font-family:monospace;">ztdc_custom_recipes (AES-256-GCM)</div><div style="font-family:monospace; font-size:10px; color:var(--muted); word-break:break-all; line-height:1.5;">${cipher2}</div></div>` : ""}
+    <div style="color:var(--muted); font-size:10px; text-align:center; margin-top:6px;">Without your ${method} identity, this data is unreadable — not even us. 🛡</div>
+  `;
+  document.body.appendChild(toast);
+  setTimeout(() => { const t = document.getElementById("signout-toast"); if (t) t.remove(); }, 12000);
+}
+
 
 async function handlePassphrase(mode) {
   const errEl = document.getElementById("pp-error");
@@ -2798,31 +2881,39 @@ async function unlockWithPassphrase(passphrase) {
 }
 
 function updateSecurityBar(encrypted, provider, displayInfo) {
-  const bar = document.getElementById("security-bar");
+  // This is overridden below — but kept in sync for clarity
+  const actionBtn = document.getElementById("security-action-btn");
+  const signoutBtn = document.getElementById("security-signout-btn");
   const icon = document.getElementById("security-icon");
   const label = document.getElementById("security-label");
+  const userSpan = document.getElementById("security-user");
+  const bar = document.getElementById("security-bar");
   if (!bar) return;
 
   if (encrypted) {
     bar.className = "security-bar locked";
-    icon.textContent = "🔒";
     const method = provider || localStorage.getItem("ztdc_auth_method") || "passphrase";
     if (method !== "passphrase") {
       const display = displayInfo || JSON.parse(localStorage.getItem("ztdc_auth_display") || "{}");
       const who = display.name || display.login || method;
-      label.innerHTML = `Encrypted via <strong>${method}</strong> (${who})`;
-      bar.querySelector("button").textContent = "Change Security";
+      icon.textContent = "🔒";
+      label.innerHTML = `Encrypted via <strong>${method}</strong>`;
+      if (userSpan) userSpan.textContent = who ? `(${who})` : "";
+      if (signoutBtn) signoutBtn.style.display = "";
     } else {
+      icon.textContent = "🔒";
       label.textContent = "Data encrypted with your passphrase";
-      bar.querySelector("button").textContent = "Change Passphrase";
+      if (userSpan) userSpan.textContent = "";
+      if (signoutBtn) signoutBtn.style.display = "none";
     }
-    bar.querySelector("button").onclick = () => showPassphraseModal("change");
+    if (actionBtn) { actionBtn.textContent = "Change"; actionBtn.onclick = () => showPassphraseModal("change"); }
   } else {
     bar.className = "security-bar unlocked";
     icon.textContent = "🔓";
     label.textContent = "Data unencrypted — stored in plain text";
-    bar.querySelector("button").textContent = "Set Passphrase";
-    bar.querySelector("button").onclick = () => showPassphraseModal("setup");
+    if (userSpan) userSpan.textContent = "";
+    if (signoutBtn) signoutBtn.style.display = "none";
+    if (actionBtn) { actionBtn.textContent = "Encrypt Data"; actionBtn.onclick = () => showPassphraseModal("setup"); }
   }
 }
 
@@ -3278,41 +3369,42 @@ async function startMicrosoftFlow() {
   }
 }
 
-// ── Enhanced updateSecurityBar with OAuth info ──
-
-const _origUpdateSecurityBar = typeof updateSecurityBar === "function" ? updateSecurityBar : null;
+// ── updateSecurityBar — unified, uses named button IDs ──
 
 updateSecurityBar = function(encrypted, method, userInfo) {
   const bar = document.getElementById("security-bar");
   const icon = document.getElementById("security-icon");
   const label = document.getElementById("security-label");
   const userSpan = document.getElementById("security-user");
+  const actionBtn = document.getElementById("security-action-btn");
+  const signoutBtn = document.getElementById("security-signout-btn");
   if (!bar) return;
 
   if (encrypted) {
     bar.className = "security-bar locked";
     const methodLabel = method === "github" ? "GitHub" : method === "google" ? "Google" : method === "microsoft" ? "Microsoft" : "passphrase";
 
-    if (method && method !== "passphrase" && userInfo) {
+    if (method && method !== "passphrase") {
       icon.textContent = "🔒";
+      const display = userInfo || JSON.parse(localStorage.getItem("ztdc_auth_display") || "{}");
+      const who = display.name || display.login || display.username || method;
       label.innerHTML = `Encrypted via <strong>${methodLabel}</strong>`;
-      if (userInfo.username) {
-        userSpan.textContent = `@${userInfo.username}`;
-      }
+      userSpan.textContent = who ? `(${who})` : "";
+      if (signoutBtn) signoutBtn.style.display = "";
     } else {
       icon.textContent = "🔒";
       label.textContent = "Data encrypted with your passphrase";
       userSpan.textContent = "";
+      if (signoutBtn) signoutBtn.style.display = "none";
     }
-    bar.querySelector("button").textContent = "Change";
-    bar.querySelector("button").onclick = () => showSecurityModal("change");
+    if (actionBtn) { actionBtn.textContent = "Change"; actionBtn.onclick = () => showSecurityModal("change"); }
   } else {
     bar.className = "security-bar unlocked";
     icon.textContent = "🔓";
     label.textContent = "Data unencrypted — stored in plain text";
     userSpan.textContent = "";
-    bar.querySelector("button").textContent = "Encrypt Data";
-    bar.querySelector("button").onclick = () => showSecurityModal("setup");
+    if (signoutBtn) signoutBtn.style.display = "none";
+    if (actionBtn) { actionBtn.textContent = "Encrypt Data"; actionBtn.onclick = () => showSecurityModal("setup"); }
   }
 };
 
