@@ -1,0 +1,31 @@
+{
+  "name": "zero-trust-deploy-config",
+  "version": "1.0.0",
+  "description": "A **zero-trust** deployment configuration router — define your environment variables per platform, validate them against platform-specific contracts, and export deployment-ready config files. All from your browser.",
+  "main": "build.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "build": "node build.js",
+    "clean": "node build.js --clean",
+    "test": "bash tests/e2e-api.sh",
+    "deploy": "npm run build && git add -A && git commit -m 'build: minified output' && git push origin main"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JoshuaWink/zero-trust-deploy-config.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/JoshuaWink/zero-trust-deploy-config/issues"
+  },
+  "homepage": "https://github.com/JoshuaWink/zero-trust-deploy-config#readme",
+  "devDependencies": {
+    "html-minifier-terser": "^7.2.0",
+    "javascript-obfuscator": "^5.3.0"
+  }
+}

@@ -1,0 +1,3332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zero-Trust Deploy Config</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --surface2: #1c2333; --border: #30363d;
+    --text: #e6edf3; --muted: #7d8590; --accent: #58a6ff;
+    --success: #3fb950; --warn: #d29920; --error: #f85149;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.6;
+  }
+
+  /* ── Header ───────────────────────────────────────────────── */
+  header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 14px 24px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  header h1 { font-size: 18px; font-weight: 600; }
+  .badge {
+    font-size: 10px; background: var(--accent); color: var(--bg);
+    padding: 2px 8px; border-radius: 12px; font-weight: 600;
+  }
+  .header-meta {
+    margin-left: auto; font-size: 12px; color: var(--muted); white-space: nowrap;
+  }
+
+  /* ── Nav ───────────────────────────────────────────────────── */
+  nav {
+    display: flex; gap: 0; background: var(--surface);
+    border-bottom: 1px solid var(--border); padding: 0 24px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+  }
+  nav button {
+    background: none; border: none; color: var(--muted); padding: 10px 18px;
+    cursor: pointer; font-size: 13px; border-bottom: 2px solid transparent;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  nav button:hover { color: var(--text); }
+  nav button.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── Layout ───────────────────────────────────────────────── */
+  main { max-width: 1100px; margin: 0 auto; padding: 20px; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── Cards ────────────────────────────────────────────────── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px; margin-bottom: 14px;
+  }
+  .card h2 { font-size: 16px; margin-bottom: 10px; }
+  .card h3 { font-size: 14px; margin-bottom: 6px; color: var(--accent); }
+
+  /* ── Forms ────────────────────────────────────────────────── */
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+  input, select, textarea {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 8px 12px; color: var(--text);
+    font-size: 13px; font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 80px; }
+  .form-row { margin-bottom: 12px; }
+  .form-row-inline { display: flex; gap: 10px; align-items: end; }
+  .form-row-inline > * { flex: 1; }
+
+  /* ── Buttons ──────────────────────────────────────────────── */
+  .btn {
+    display: inline-block; background: var(--accent); color: var(--bg); border: none;
+    border-radius: var(--radius); padding: 8px 16px; font-size: 13px;
+    cursor: pointer; font-weight: 600; transition: opacity 0.15s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn-s { padding: 5px 10px; font-size: 11px; }
+  .btn-sec { background: var(--border); color: var(--text); }
+  .btn-ok { background: var(--success); }
+  .btn-err { background: var(--error); }
+
+  /* ── Tags ─────────────────────────────────────────────────── */
+  .tag {
+    display: inline-block; font-size: 10px; padding: 2px 7px;
+    border-radius: 12px; margin: 1px; font-weight: 600;
+  }
+  .tag-i { background: #1f6feb33; color: var(--accent); }
+  .tag-ok { background: #23863633; color: var(--success); }
+  .tag-w { background: #9e6a0333; color: var(--warn); }
+  .tag-e { background: #da363333; color: var(--error); }
+
+  /* ── Tables ───────────────────────────────────────────────── */
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 12px; }
+  th { color: var(--muted); text-transform: uppercase; font-weight: 600; font-size: 11px; }
+  pre {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px; overflow-x: auto;
+    font-size: 12px; line-height: 1.5; margin-top: 6px;
+  }
+  code { font-family: 'SF Mono', 'Fira Code', Consolas, monospace; }
+
+  /* ── Stat grid ────────────────────────────────────────────── */
+  .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .stat {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px; text-align: center;
+  }
+  .stat .sv { font-size: 20px; font-weight: 700; }
+  .stat .sl { font-size: 10px; color: var(--muted); text-transform: uppercase; margin-top: 2px; }
+
+  /* ── Platform grid ────────────────────────────────────────── */
+  .pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+
+  /* ── Result boxes ─────────────────────────────────────────── */
+  .rbox { padding: 16px; border-radius: var(--radius); margin-top: 12px; }
+  .rbox-ok { background: #23863620; border: 1px solid var(--success); }
+  .rbox-err { background: #da363320; border: 1px solid var(--error); }
+  .issues { list-style: none; }
+  .issues li { padding: 6px 8px; border-bottom: 1px solid var(--border); font-size: 12px; }
+
+  /* ── Format tabs ──────────────────────────────────────────── */
+  .fmt-tabs {
+    display: flex; gap: 0; border-bottom: 1px solid var(--border);
+    overflow-x: auto; flex-wrap: nowrap;
+  }
+  .fmt-tabs button {
+    background: none; border: none; color: var(--muted); padding: 7px 12px;
+    cursor: pointer; font-size: 11px; white-space: nowrap;
+    border-bottom: 2px solid transparent; transition: all 0.15s;
+  }
+  .fmt-tabs button:hover { color: var(--text); }
+  .fmt-tabs button.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .fmt-panel { display: none; }
+  .fmt-panel.active { display: block; }
+
+  /* ── Copy button ──────────────────────────────────────────── */
+  .cp {
+    float: right; background: var(--border); color: var(--text);
+    border: none; border-radius: 4px; padding: 3px 8px; font-size: 11px; cursor: pointer;
+  }
+  .cp:hover { background: var(--accent); color: var(--bg); }
+
+  /* ── Collapsible ──────────────────────────────────────────── */
+  .collapse-toggle {
+    background: none; border: none; color: var(--accent); cursor: pointer;
+    font-size: 13px; padding: 0; font-weight: 600;
+  }
+  .collapse-body { display: none; margin-top: 10px; }
+  .collapse-body.open { display: block; }
+
+  /* ── Var entry ────────────────────────────────────────────── */
+  .var-entry {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 10px; margin-bottom: 6px;
+  }
+
+  /* ── Utils ────────────────────────────────────────────────── */
+  .flex-b { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .hidden { display: none; }
+  .muted { color: var(--muted); }
+  .empty { text-align: center; padding: 32px; color: var(--muted); }
+  footer { text-align: center; padding: 20px; color: var(--muted); font-size: 11px; }
+
+  /* ── Mobile ───────────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    header { padding: 12px 16px; }
+    header h1 { font-size: 15px; }
+    nav { padding: 0 8px; }
+    nav button { padding: 8px 12px; font-size: 12px; }
+    main { padding: 14px; }
+    .card { padding: 14px; }
+    .pgrid { grid-template-columns: 1fr; }
+    .form-row-inline { flex-direction: column; gap: 8px; }
+    .form-row-inline > * { flex: unset; width: 100%; }
+    .flex-b { flex-direction: column; align-items: stretch; gap: 6px; }
+    .var-entry .form-row-inline { flex-direction: column; }
+    table { display: block; overflow-x: auto; }
+    th, td { padding: 5px 6px; white-space: nowrap; }
+    pre { font-size: 11px; padding: 10px; }
+  }
+  @media (max-width: 480px) {
+    .stats { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat .sv { font-size: 18px; }
+    .tag { font-size: 9px; }
+  }
+
+
+  .import-panel {
+    background: var(--surface2);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin-bottom: 16px;
+  }
+  .import-panel.collapsed > *:not(:first-child) { display: none; }
+  .import-panel.collapsed { padding: 8px 14px; }
+
+  .import-panel {
+    background: var(--surface2);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin-bottom: 16px;
+  }
+  .import-panel.collapsed > *:not(:first-child) { display: none; }
+  .import-panel.collapsed { padding: 8px 14px; }
+  .recipe-sub { background: var(--surface2); border: 1px solid var(--border); }
+  .recipe-sub.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .recipe-panel { }
+
+
+  .import-panel {
+    background: var(--surface2);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin-bottom: 16px;
+  }
+  .import-panel.collapsed > *:not(:first-child) { display: none; }
+  .import-panel.collapsed { padding: 8px 14px; }
+
+  .import-panel {
+    background: var(--surface2);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin-bottom: 16px;
+  }
+  .import-panel.collapsed > *:not(:first-child) { display: none; }
+  .import-panel.collapsed { padding: 8px 14px; }
+  .recipe-sub { background: var(--surface2); border: 1px solid var(--border); }
+  .recipe-sub.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .recipe-panel { }
+
+  /* Security indicator */
+  .security-bar { display:flex; align-items:center; gap:8px; padding:6px 12px; border-radius:var(--radius); font-size:11px; margin-bottom:8px; }
+  .security-bar.locked { background:#23863615; border:1px solid var(--success); color:var(--success); }
+  .security-bar.unlocked { background:#d2992015; border:1px solid var(--warn, #d29920); color:var(--warn, #d29920); }
+  .security-bar button { font-size:10px; padding:2px 8px; cursor:pointer; border-radius:4px; border:1px solid currentColor; background:transparent; color:inherit; }
+  .security-bar button:hover { opacity:0.8; }
+  #passphrase-modal { position:fixed; inset:0; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:1000; }
+  #passphrase-modal .modal-box { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; max-width:400px; width:90%; }
+  #passphrase-modal h3 { margin-bottom:12px; }
+  #passphrase-modal input { width:100%; margin-bottom:8px; }
+  #passphrase-modal .modal-actions { display:flex; gap:8px; margin-top:12px; }
+
+  .oauth-buttons { display:flex; flex-direction:column; gap:8px; margin:12px 0; }
+  .oauth-btn { display:flex; align-items:center; gap:10px; padding:10px 16px; border-radius:8px; border:1px solid var(--border); cursor:pointer; font-size:13px; font-weight:500; transition:all 0.2s; background:var(--card); color:var(--text); }
+  .oauth-btn:hover { border-color:var(--accent); background:#1f6feb10; }
+  .oauth-btn:disabled { opacity:0.4; cursor:not-allowed; }
+  .oauth-btn img, .oauth-btn svg { width:20px; height:20px; }
+  .oauth-btn .provider-name { flex:1; text-align:left; }
+  .oauth-btn .status-tag { font-size:10px; padding:2px 6px; border-radius:4px; }
+  .oauth-divider { display:flex; align-items:center; gap:12px; margin:16px 0; color:var(--muted); font-size:11px; }
+  .oauth-divider::before, .oauth-divider::after { content:''; flex:1; border-top:1px solid var(--border); }
+  .security-method-tabs { display:flex; gap:0; margin-bottom:16px; border-radius:8px; overflow:hidden; border:1px solid var(--border); }
+  .security-method-tabs button { flex:1; padding:8px 12px; border:none; background:var(--bg); color:var(--muted); cursor:pointer; font-size:12px; font-weight:500; transition:all 0.2s; }
+  .security-method-tabs button.active { background:var(--accent); color:#fff; }
+  .security-method-tabs button:hover:not(.active) { background:#1f6feb10; }
+
+
+</style>
+<!-- OAuth provider libraries (loaded async, only used if configured) -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js" async defer></script>
+</head>
+<body>
+
+<header>
+  <h1>🔐 Zero-Trust Deploy Config</h1>
+  <span class="badge">STATIC</span>
+  <span class="header-meta">
+    <span id="hdr-contracts">—</span> contracts ·
+    <span id="hdr-profiles">—</span> profiles · <span id="hdr-recipes">—</span> recipes · <span id="hdr-recipes">—</span> recipes
+  </span>
+</header>
+
+<nav id="nav">
+  <button data-page="overview" class="active">Overview</button>
+  <button data-page="profiles">Profiles</button>
+  <button data-page="recipes">Recipes</button>
+  <button data-page="contribute">Contribute</button>
+</nav>
+
+
+<div id="security-bar" class="security-bar unlocked" style="max-width:960px; margin:0 auto;">
+  <span id="security-icon">🔓</span>
+  <span id="security-label">Data unencrypted — stored in plain text</span>
+  <span id="security-user" style="font-size:10px; opacity:0.7;"></span>
+  <span style="flex:1;"></span>
+  <button onclick="showSecurityModal('setup')">Encrypt Data</button>
+</div>
+
+<main>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     PAGE: OVERVIEW — The app. Select profile → see everything instantly.
+     ═══════════════════════════════════════════════════════════════════ -->
+<div id="pg-overview" class="page active">
+
+  <!-- Demo Banner -->
+  <div class="card" id="demo-banner" style="border-color: var(--accent); background: linear-gradient(135deg, #161b22 0%, #1a2332 100%);">
+    <div class="flex-b" style="flex-direction:row; align-items:center; flex-wrap:wrap; gap:12px;">
+      <div style="flex:1; min-width:220px;">
+        <h2 style="margin-bottom:4px;">🚀 Try the Live Demo</h2>
+        <p class="muted" style="font-size:13px; margin:0;">
+          Load <strong>7 pre-built profiles</strong> — a passing K8s deploy, a Vercel app, an ECS worker,
+          and a broken deploy with intentional errors. See validation + exports instantly.
+        </p>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn" onclick="loadDemos()">▶ Load Demos</button>
+        <button class="btn btn-sec btn-s" onclick="clearDemos()">🗑 Clear</button>
+      </div>
+    </div>
+    <div id="demo-msg" style="display:none; margin-top:10px;"></div>
+  </div>
+
+  <!-- Profile Selector -->
+  <div class="card">
+    <div class="flex-b" style="flex-direction:row; align-items:end; flex-wrap:wrap; gap:10px;">
+      <div style="flex:1; min-width:200px;">
+        <label>Select Profile</label>
+        <select id="ov-profile" onchange="renderOverview()"></select>
+      </div>
+      <div style="display:flex; gap:6px;">
+        <button class="btn btn-s" onclick="goTo('profiles')">+ New Profile</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live Output Area -->
+  <div id="ov-out">
+    <div class="card"><div class="empty">
+      <div style="font-size:2rem; margin-bottom:8px;">👆</div>
+      <p>Select a profile above — or load demos to get started.</p>
+      <p class="muted" style="font-size:12px; margin-top:6px;">
+        No server needed. Validation + export runs entirely in your browser.
+      </p>
+    </div></div>
+  </div>
+
+  <!-- Platforms Reference (collapsible) -->
+  <div class="card">
+    <button class="collapse-toggle" onclick="togglePlatforms()">
+      📋 <span id="plat-toggle-label">Show Platform Contracts</span> (<span id="plat-count">0</span>)
+    </button>
+    <div class="collapse-body" id="plat-body">
+      <div class="pgrid" id="plat-grid"></div>
+    </div>
+  </div>
+
+  <!-- API & Automation -->
+  <div class="card" style="border-top: 3px solid var(--accent);">
+    <div class="flex-b" style="flex-direction:row; align-items:center; margin-bottom:10px;">
+      <h3 style="margin:0;">🤖 API &amp; Automation</h3>
+      <a href="agents.txt" target="_blank" class="btn btn-s" style="text-decoration:none; font-size:11px;">agents.txt</a>
+    </div>
+    <p class="muted" style="font-size:12px; margin-bottom:12px;">
+      Everything in this UI is also available as a JSON API. Read-only data is served as static JSON from GitHub Pages.
+      Validation, export, and profile CRUD are handled by a Cloudflare Worker API.
+    </p>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+      <div style="background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:10px;">
+        <div style="font-size:11px; font-weight:600; margin-bottom:6px;">📄 Static Endpoints <span class="muted">(no auth)</span></div>
+        <code style="font-size:10px; display:block; line-height:1.6;">
+          GET /contracts/index.json<br>
+          GET /contracts/{id}.json<br>
+          GET /recipes/index.json<br>
+          GET /recipes/{id}.json<br>
+          GET /agents.txt
+        </code>
+      </div>
+      <div style="background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:10px;">
+        <div style="font-size:11px; font-weight:600; margin-bottom:6px;">⚡ Compute Endpoints</div>
+        <code style="font-size:10px; display:block; line-height:1.6;">
+          POST /api/v1/validate<br>
+          POST /api/v1/export<br>
+          GET|POST /api/v1/profiles<br>
+          PUT|DELETE /api/v1/profiles/{id}<br>
+          POST /auth/github
+        </code>
+      </div>
+    </div>
+
+    <div style="background:#0d1117; border:1px solid var(--border); border-radius:var(--radius); padding:12px; overflow-x:auto;">
+      <div style="font-size:10px; color:var(--muted); margin-bottom:6px;">Quick start — try these in your terminal:</div>
+      <pre style="margin:0; font-size:11px; line-height:1.5; white-space:pre; color:#e6edf3;"><span style="color:#8b949e;"># List all platforms</span>
+curl -s https://joshuawink.github.io/zero-trust-deploy-config/contracts/index.json | jq -r '.contracts[]'
+
+<span style="color:#8b949e;"># Check what Kubernetes requires</span>
+curl -s https://joshuawink.github.io/zero-trust-deploy-config/contracts/kubernetes.json | jq '.required_vars'
+
+<span style="color:#8b949e;"># Validate a config</span>
+curl -sX POST https://ztdc-github-oauth.orchie.workers.dev/api/v1/validate \
+  -H "Content-Type: application/json" \
+  -d '{"platform":"kubernetes","vars":[{"key":"APP_ENV","value":"prod"}]}'
+
+<span style="color:#8b949e;"># Export as .env file</span>
+curl -sX POST https://ztdc-github-oauth.orchie.workers.dev/api/v1/export \
+  -H "Content-Type: application/json" \
+  -d '{"platform":"kubernetes","name":"prod","vars":[{"key":"APP_ENV","value":"prod"}],"format":"env"}' \
+  | jq -r '.content' > prod.env</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     PAGE: PROFILES — Create / edit / delete profiles.
+     ═══════════════════════════════════════════════════════════════════ -->
+<div id="pg-profiles" class="page">
+  <div class="flex-b" style="margin-bottom:14px; flex-direction:row;">
+    <h2>Profiles</h2>
+    <button class="btn btn-s" onclick="showCreateProfile()">+ New Profile</button>
+  </div>
+
+  <div id="profile-list"></div>
+
+  <!-- Profile Form -->
+  <div id="profile-form" class="card hidden">
+    <h3 id="pf-title">New Profile</h3>
+    <div class="form-row">
+      <label>Profile ID (slug)</label>
+      <input id="pf-id" placeholder="api-production">
+    </div>
+    <div class="form-row">
+      <label>Display Name</label>
+      <input id="pf-name" placeholder="API Production">
+    </div>
+    <div class="form-row-inline">
+      <div><label>Platform</label><select id="pf-platform"></select></div>
+      <div><label>Environment</label>
+        <select id="pf-env">
+          <option value="production">production</option>
+          <option value="staging">staging</option>
+          <option value="development">development</option>
+          <option value="test">test</option>
+        </select>
+      </div>
+          ${(() => {
+              const isUnk = step.platform && !contracts[step.platform];
+              if (!isUnk) return '';
+              return `<div style="grid-column:1/-1; background:#d2992015; border:1px solid var(--warn,#d29920); border-radius:var(--radius); padding:6px 10px; font-size:11px; color:var(--warn,#d29920); display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                ⚠️ <strong>${esc(step.platform)}</strong> is not a known contract.
+                <button class="btn btn-s" style="background:var(--warn,#d29920); color:#000; padding:2px 10px; font-size:11px; border:none; cursor:pointer;" onclick="importAsContract(${idx})">Import as Contract</button>
+              </div>`;
+            })()}
+    </div>
+    <div style="margin-top:14px;">
+      <div class="flex-b" style="flex-direction:row;">
+        <label style="margin:0;">Environment Variables</label>
+        <button class="btn btn-sec btn-s" onclick="addVarRow()">+ Add Var</button>
+      </div>
+      <div id="var-rows" style="margin-top:6px;"></div>
+    </div>
+    <div style="margin-top:14px; display:flex; gap:8px;">
+      <button class="btn btn-ok" onclick="saveProfile()">Save Profile</button>
+      <button class="btn btn-sec" onclick="cancelForm()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     PAGE: RECIPES — Composable multi-platform deployment stacks.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div id="pg-recipes" class="page">
+
+  <!-- Sub-nav: Browse / My Recipes / Build -->
+  <div class="card" style="padding:8px 14px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+    <button class="btn btn-s recipe-sub active" data-rsub="browse" onclick="switchRecipeSub('browse')">📖 Community</button>
+    <button class="btn btn-s recipe-sub" data-rsub="my" onclick="switchRecipeSub('my')">⭐ My Recipes</button>
+    <button class="btn btn-s recipe-sub" data-rsub="build" onclick="switchRecipeSub('build')">🔧 Builder</button>
+    <span style="flex:1;"></span>
+    <span class="muted" style="font-size:11px;"><span id="community-count">0</span> community · <span id="custom-count">0</span> custom</span>
+  </div>
+
+  <!-- SUB: Browse Community Recipes -->
+  <div id="rsub-browse" class="recipe-panel">
+    <div class="card">
+      <div class="flex-b" style="flex-direction:row; align-items:end; flex-wrap:wrap; gap:10px;">
+        <div style="flex:1; min-width:200px;">
+          <label>Community Recipe</label>
+          <select id="recipe-select" onchange="renderRecipeDetail()">
+            <option value="">— choose a recipe —</option>
+          </select>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <label style="font-size:11px; color:var(--muted);">Filter:</label>
+          <select id="recipe-filter" onchange="filterRecipes()" style="min-width:100px;">
+            <option value="">All</option>
+            <option value="starter">Starter</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div id="recipe-out">
+      <div class="card"><div class="empty">
+        <div style="font-size:2rem; margin-bottom:8px;">📖</div>
+        <p>Browse community-contributed deployment stacks.</p>
+        <p class="muted" style="font-size:12px; margin-top:6px;">Pick a recipe, then <strong>Fork</strong> it to customize, or <strong>Generate Profiles</strong> directly.</p>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- SUB: My Recipes (custom, stored in localStorage) -->
+  <div id="rsub-my" class="recipe-panel" style="display:none;">
+    <div class="flex-b" style="margin-bottom:10px; flex-direction:row;">
+      <h3 style="font-size:14px; color:var(--muted);">My Custom Recipes</h3>
+      <button class="btn btn-s" onclick="switchRecipeSub('build'); startNewRecipe();">+ New Recipe</button>
+    </div>
+    <div id="my-recipes-list">
+      <div class="card"><div class="empty">
+        <div style="font-size:2rem; margin-bottom:8px;">⭐</div>
+        <p>No custom recipes yet.</p>
+        <p class="muted" style="font-size:12px; margin-top:6px;">Fork a community recipe or build one from scratch in the <strong>Builder</strong> tab.</p>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- SUB: Recipe Builder -->
+  <div id="rsub-build" class="recipe-panel" style="display:none;">
+    <div class="card">
+      <h3 style="margin-bottom:10px;" id="rb-title">Build a Recipe</h3>
+
+      <!-- Import Controls -->
+      <div id="rb-import-panel" class="import-panel">
+        <div class="flex-b" style="flex-direction:row; align-items:center; margin-bottom:6px;">
+          <label style="margin:0; font-size:13px; font-weight:600;">📥 Import Recipe</label>
+          <button class="btn btn-s btn-sec" style="font-size:11px;" onclick="toggleImportPanel()">▼ Collapse</button>
+        </div>
+        <p class="muted" style="font-size:11px; margin-bottom:8px;">Paste recipe JSON or upload a .json file to auto-populate the builder.</p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="flex:2; min-width:250px;">
+            <textarea id="rb-import-text" rows="4" placeholder='{"id": "my-stack", "name": "My Stack", ...}' style="font-family:monospace; font-size:11px;"></textarea>
+          </div>
+          <div style="flex:1; min-width:140px; display:flex; flex-direction:column; gap:6px;">
+            <button class="btn btn-s" onclick="importRecipeFromText()" style="width:100%;">📋 Import from Text</button>
+            <label class="btn btn-s btn-sec" style="width:100%; text-align:center; cursor:pointer; margin:0;">
+              📁 Import from File
+              <input type="file" id="rb-import-file" accept=".json,application/json" onchange="importRecipeFromFile(event)" style="display:none;">
+            </label>
+            <button class="btn btn-s btn-sec" onclick="clearImport()" style="width:100%; font-size:10px;">✕ Clear</button>
+          </div>
+        </div>
+        <div id="rb-import-msg" style="margin-top:6px;"></div>
+      </div>
+
+      <div class="form-row">
+        <label>Recipe ID (slug)</label>
+        <input id="rb-id" placeholder="my-api-stack">
+      </div>
+      <div class="form-row">
+        <label>Recipe Name</label>
+        <input id="rb-name" placeholder="My API Stack">
+      </div>
+      <div class="form-row">
+        <label>Description</label>
+        <textarea id="rb-desc" rows="2" placeholder="What this stack does and when to use it..."></textarea>
+      </div>
+      <div class="form-row-inline">
+        <div><label>Category</label>
+          <select id="rb-category">
+            <option value="fullstack">fullstack</option>
+            <option value="api">api</option>
+            <option value="frontend">frontend</option>
+            <option value="data-pipeline">data-pipeline</option>
+            <option value="edge">edge</option>
+            <option value="microservices">microservices</option>
+          </select>
+        </div>
+        <div><label>Complexity</label>
+          <select id="rb-complexity">
+            <option value="starter">starter</option>
+            <option value="intermediate">intermediate</option>
+            <option value="advanced">advanced</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Steps -->
+      <div style="margin-top:16px;">
+        <div class="flex-b" style="flex-direction:row;">
+          <label style="margin:0; font-size:14px; font-weight:600;">Pipeline Steps</label>
+          <button class="btn btn-s btn-sec" onclick="addRecipeStep()">+ Add Step</button>
+        </div>
+        <div id="rb-steps" style="margin-top:8px;"></div>
+        <div id="rb-no-steps" class="muted" style="font-size:12px; text-align:center; padding:16px;">No steps yet. Add your first pipeline step above.</div>
+      </div>
+
+      <!-- Actions -->
+      <div style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-ok" onclick="saveCustomRecipe()">💾 Save Recipe</button>
+        <button class="btn btn-sec" onclick="cancelRecipeBuilder()">Cancel</button>
+        <span style="flex:1;"></span>
+        <button class="btn btn-s" style="font-size:11px;" onclick="exportRecipeJson()">📋 Copy JSON</button>
+      </div>
+      <div id="rb-msg" style="margin-top:10px;"></div>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     PAGE: CONTRIBUTE — Submit contracts & recipes via GitHub PR
+     ═══════════════════════════════════════════════════════════════════ -->
+<div id="pg-contribute" class="page">
+  <h2>Contribute</h2>
+  <p class="muted" style="margin-bottom:16px;">Submit new platform contracts or deployment recipes to the community via GitHub Pull Request. Requires a <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--accent);">GitHub Personal Access Token</a> with <code>repo</code> scope.</p>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+
+    <!-- Contract Submission -->
+    <div class="card" style="border-top:3px solid var(--accent);">
+      <h3 style="margin-bottom:12px;">📋 Submit Contract</h3>
+      <p class="muted" style="font-size:12px; margin-bottom:12px;">Paste a platform contract JSON. It will be validated against the schema before submission.</p>
+
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div>
+          <label style="font-size:11px;">GitHub Username</label>
+          <input id="sub-user" placeholder="your-username" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:11px;">Personal Access Token</label>
+          <input id="sub-token" type="password" placeholder="ghp_xxxxxxxxxxxx" style="width:100%;" autocomplete="off">
+          <span class="muted" style="font-size:10px;">🔒 Never stored — used only for this request</span>
+        </div>
+        <div>
+          <label style="font-size:11px;">Contract JSON</label>
+          <textarea id="sub-json" rows="10" placeholder='{"id":"my-platform","name":"My Platform","category":"cloud",...}' style="width:100%; font-family:var(--mono); font-size:11px;"></textarea>
+        </div>
+        <div>
+          <label style="font-size:11px;">Notes (optional)</label>
+          <input id="sub-notes" placeholder="Any context for reviewers..." style="width:100%;">
+        </div>
+        <button class="btn" onclick="submitContract()">Submit Contract PR</button>
+        <div id="submit-result"></div>
+      </div>
+    </div>
+
+    <!-- Recipe Submission -->
+    <div class="card" style="border-top:3px solid var(--success);">
+      <h3 style="margin-bottom:12px;">🍳 Submit Recipe</h3>
+      <p class="muted" style="font-size:12px; margin-bottom:12px;">Share a deployment recipe with the community. Build it in the <strong>Recipes → Builder</strong> tab first, then paste the exported JSON here.</p>
+
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div>
+          <label style="font-size:11px;">GitHub Username</label>
+          <input id="sub-recipe-user" placeholder="your-username" style="width:100%;"
+                 oninput="document.getElementById('sub-user').value = this.value;">
+        </div>
+        <div>
+          <label style="font-size:11px;">Personal Access Token</label>
+          <input id="sub-recipe-token" type="password" placeholder="ghp_xxxxxxxxxxxx" style="width:100%;" autocomplete="off"
+                 oninput="document.getElementById('sub-token').value = this.value;">
+          <span class="muted" style="font-size:10px;">🔒 Never stored — used only for this request</span>
+        </div>
+        <div>
+          <label style="font-size:11px;">Recipe JSON</label>
+          <textarea id="sub-recipe-json" rows="10" placeholder='{"id":"my-stack","name":"My Stack","category":"api",...}' style="width:100%; font-family:var(--mono); font-size:11px;"></textarea>
+        </div>
+        <button class="btn" style="background:var(--success);" onclick="submitRecipe()">Submit Recipe PR</button>
+        <div id="submit-recipe-result"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="card" style="margin-top:16px; border-color:var(--warn, #d29920);">
+    <h4 style="color:var(--warn, #d29920);">⚠️ Contribution Guidelines</h4>
+    <ul style="font-size:12px; padding-left:18px; margin:8px 0 0 0; line-height:1.8;">
+      <li>Contracts must follow the <a href="https://github.com/JoshuaWink/zero-trust-deploy-config" target="_blank" style="color:var(--accent);">schema spec</a></li>
+      <li>Use kebab-case IDs (e.g. <code>aws-lambda</code>, <code>gcp-cloud-run</code>)</li>
+      <li>Include at least one <code>secret_backend</code> and one <code>export_format</code></li>
+      <li>Add meaningful descriptions and notes for reviewers</li>
+      <li>Your GitHub token is <strong>never stored</strong> — it's used for the PR API call only</li>
+    </ul>
+  </div>
+</div>
+
+</main>
+
+<footer>
+  Zero-Trust Deploy Config — a <a href="https://github.com/orchestrate-solutions/codeupipe" style="color:var(--accent);">codeupipe</a> prototype.
+  All validation runs client-side. No secrets are stored or transmitted.
+</footer>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════
+   STATE
+   ══════════════════════════════════════════════════════════════════════ */
+let contracts = {};
+let profiles = {};
+let recipes = {};
+const STORAGE_KEY = "ztdc_profiles";
+
+/* ══════════════════════════════════════════════════════════════════════
+   BOOT
+   ══════════════════════════════════════════════════════════════════════ */
+document.addEventListener("DOMContentLoaded", async () => {
+  setupNav();
+  loadProfilesFromStorage();
+  await loadContracts();
+  await loadRecipes();
+  refreshAll();
+  // Show demo banner prominently if no profiles
+  if (Object.keys(profiles).length === 0) {
+    document.getElementById("demo-banner").style.borderColor = "var(--accent)";
+  }
+});
+
+function setupNav() {
+  document.querySelectorAll("#nav button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#nav button").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("pg-" + btn.dataset.page).classList.add("active");
+      refreshAll();
+    });
+  });
+}
+
+function goTo(page) {
+  document.querySelectorAll("#nav button").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  const btn = document.querySelector(`#nav button[data-page="${page}"]`);
+  if (btn) btn.classList.add("active");
+  document.getElementById("pg-" + page).classList.add("active");
+  refreshAll();
+}
+
+function refreshAll() {
+  populateSelects();
+  renderProfiles();
+  renderPlatforms();
+  populateRecipeSelect();
+  updateHeaderMeta();
+  renderOverview();
+}
+
+function updateHeaderMeta() {
+  document.getElementById("hdr-contracts").textContent = Object.keys(contracts).length;
+  document.getElementById("hdr-profiles").textContent = Object.keys(profiles).length;
+  document.getElementById("hdr-recipes").textContent = Object.keys(recipes).length;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   CONTRACT LOADING
+   ══════════════════════════════════════════════════════════════════════ */
+async function loadContracts() {
+  try {
+    const base = getContractsBaseUrl();
+    const indexResp = await fetch(base + "/index.json");
+    if (!indexResp.ok) throw new Error("Failed to load index.json");
+    const index = await indexResp.json();
+    const fetches = index.contracts.map(async (id) => {
+      const resp = await fetch(base + "/" + id + ".json");
+      if (resp.ok) { const d = await resp.json(); contracts[d.id] = norm(d); }
+    });
+    await Promise.all(fetches);
+  } catch (err) { console.error("Contract load error:", err); }
+}
+
+function getContractsBaseUrl() {
+  const loc = window.location;
+  if (loc.protocol === "file:") {
+    return loc.pathname.substring(0, loc.pathname.lastIndexOf("/")) + "/contracts";
+  }
+  return loc.pathname.replace(/\/index\.html$/i, "").replace(/\/+$/, "") + "/contracts";
+}
+
+function norm(d) {
+  const naming = d.naming || {}, limits = d.limits || {};
+  return {
+    id: d.id, name: d.name, category: d.category || "", docs_url: d.docs_url || "",
+    required_vars: d.required_vars || [], optional_vars: d.optional_vars || [],
+    naming_pattern: naming.pattern || "^[a-zA-Z_][a-zA-Z0-9_]*$",
+    naming_description: naming.description || "",
+    forbidden_prefixes: naming.forbidden_prefixes || [],
+    key_max_length: limits.key_max_length || null,
+    value_max_length: limits.value_max_length || null,
+    max_vars: limits.max_vars || null,
+    max_total_size: limits.max_total_size || null,
+    limits_notes: limits.notes || "",
+    secret_backends: d.secret_backends || [],
+    export_formats: d.export_formats || [],
+    notes: d.notes || "",
+  };
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PROFILE PERSISTENCE
+   ══════════════════════════════════════════════════════════════════════ */
+function loadProfilesFromStorage() {
+  try { const r = localStorage.getItem(STORAGE_KEY); profiles = r ? JSON.parse(r) : {}; }
+  catch { profiles = {}; }
+}
+
+function saveProfiles() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
+  refreshAll();
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   VALIDATION ENGINE
+   ══════════════════════════════════════════════════════════════════════ */
+function validate(profile, contract) {
+  const issues = [], rules = [];
+
+  rules.push("required-vars");
+  for (const req of contract.required_vars) {
+    if (!profile.vars.some(v => v.key === req))
+      issues.push({ rule: "required-vars", sev: "error", key: req,
+        msg: `Required variable '${req}' is missing.` });
+  }
+
+  rules.push("naming-convention");
+  let rx; try { rx = new RegExp(contract.naming_pattern); } catch { rx = null; }
+  for (const v of profile.vars) {
+    if (rx && !rx.test(v.key))
+      issues.push({ rule: "naming", sev: "error", key: v.key,
+        msg: `'${v.key}' violates naming rule: ${contract.naming_description || contract.naming_pattern}` });
+    for (const p of contract.forbidden_prefixes)
+      if (v.key.startsWith(p))
+        issues.push({ rule: "naming", sev: "error", key: v.key,
+          msg: `'${v.key}' uses reserved prefix '${p}'.` });
+  }
+
+  rules.push("duplicate-keys");
+  const seen = {};
+  for (const v of profile.vars) {
+    if (seen[v.key]) issues.push({ rule: "duplicates", sev: "error", key: v.key, msg: `Duplicate key '${v.key}'.` });
+    seen[v.key] = true;
+  }
+
+  rules.push("platform-limits");
+  if (contract.max_vars && profile.vars.length > contract.max_vars)
+    issues.push({ rule: "limits", sev: "error", key: "", msg: `${profile.vars.length} vars exceeds limit of ${contract.max_vars}.` });
+  for (const v of profile.vars) {
+    if (contract.key_max_length && v.key.length > contract.key_max_length)
+      issues.push({ rule: "limits", sev: "error", key: v.key, msg: `Key length (${v.key.length}) exceeds max (${contract.key_max_length}).` });
+  }
+  if (contract.max_total_size) {
+    let sz = 0;
+    for (const v of profile.vars) sz += v.key.length + 1 + `ref:${v.secret_ref.backend}:${v.secret_ref.path}`.length;
+    if (sz > contract.max_total_size)
+      issues.push({ rule: "limits", sev: "warning", key: "", msg: `Total env size (~${sz}B) exceeds limit (${contract.max_total_size}B).` });
+  }
+
+  rules.push("backend-compat");
+  if (contract.secret_backends.length > 0) {
+    for (const v of profile.vars)
+      if (!contract.secret_backends.includes(v.secret_ref.backend))
+        issues.push({ rule: "backend", sev: "error", key: v.key,
+          msg: `Backend '${v.secret_ref.backend}' not supported. Use: ${contract.secret_backends.join(", ")}` });
+  }
+
+  const errs = issues.filter(i => i.sev === "error").length;
+  const warns = issues.filter(i => i.sev === "warning").length;
+  return { valid: errs === 0, errors: errs, warnings: warns, issues, rules };
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   EXPORT FORMATTERS
+   ══════════════════════════════════════════════════════════════════════ */
+const FMT = {
+  "env-file": fmtEnv, "docker-compose-yaml": fmtDockerCompose,
+  "github-actions-yaml": fmtGithubActions, "k8s-configmap-yaml": fmtK8sCM,
+  "k8s-secret-yaml": fmtK8sSecret, "ecs-task-def-json": fmtEcs, "lambda-env-json": fmtLambda,
+  "heroku-json": fmtHerokuJson, "fly-toml": fmtFlyToml, "railway-json": fmtRailwayJson,
+  "render-yaml": fmtRenderYaml, "netlify-toml": fmtNetlifyToml, "terraform-tfvars": fmtTerraformTfvars,
+  "circleci-yaml": fmtCircleCiYaml, "gitlab-ci-yaml": fmtGitlabCiYaml,
+  "cloudflare-wrangler-toml": fmtWranglerToml, "nomad-hcl": fmtNomadHcl,
+};
+
+function sv(p) { return [...p.vars].sort((a,b) => a.key.localeCompare(b.key)); }
+
+function fmtEnv(p) {
+  const h = [`# Profile: ${p.name} (${p.platform})`, `# Environment: ${p.environment}`, "# Values are secret references, not actual secrets", ""];
+  for (const v of sv(p)) { const r = v.secret_ref; h.push(`${v.key}=ref:${r.backend}:${r.path}${r.version ? "@"+r.version : ""}`); }
+  return h.join("\n") + "\n";
+}
+
+function fmtDockerCompose(p) {
+  const h = ["# Generated by zero-trust-deploy-config", `# Profile: ${p.name} (${p.environment})`, "services:", `  ${p.id}:`, "    environment:"];
+  for (const v of sv(p)) h.push(`      - ${v.key}=\${{ ${v.key} }}`);
+  h.push("", "    env_file:", `      - .env.${p.environment}`);
+  return h.join("\n") + "\n";
+}
+
+function fmtGithubActions(p) {
+  const h = ["# Generated by zero-trust-deploy-config", `# Profile: ${p.name} (${p.environment})`, "env:"];
+  for (const v of sv(p)) h.push(`  ${v.key}: \${{ secrets.${v.key} }}`);
+  return h.join("\n") + "\n";
+}
+
+function fmtK8sCM(p) {
+  const h = ["# Generated by zero-trust-deploy-config", "apiVersion: v1", "kind: ConfigMap", "metadata:", `  name: ${p.id}-config`, "data:"];
+  for (const v of sv(p)) if (!v.required) h.push(`  ${v.key}: "ref:${v.secret_ref.backend}:${v.secret_ref.path}"`);
+  return h.join("\n") + "\n";
+}
+
+function fmtK8sSecret(p) {
+  const h = ["# Generated by zero-trust-deploy-config", "# WARNING: populate from your secret manager before applying", "apiVersion: v1", "kind: Secret", "metadata:", `  name: ${p.id}-secrets`, "type: Opaque", "stringData:"];
+  for (const v of sv(p)) if (v.required) h.push(`  ${v.key}: "<resolve from ${v.secret_ref.backend}:${v.secret_ref.path}>"`);
+  return h.join("\n") + "\n";
+}
+
+function fmtEcs(p) {
+  const env = [], sec = [];
+  for (const v of sv(p)) {
+    if (["aws-ssm","aws-secrets-manager"].includes(v.secret_ref.backend))
+      sec.push({ name: v.key, valueFrom: v.secret_ref.path });
+    else env.push({ name: v.key, value: `ref:${v.secret_ref.backend}:${v.secret_ref.path}` });
+  }
+  return JSON.stringify({ _comment: `Profile: ${p.id}`, environment: env, secrets: sec }, null, 2) + "\n";
+}
+
+function fmtLambda(p) {
+  const vars = {};
+  for (const v of sv(p)) vars[v.key] = `ref:${v.secret_ref.backend}:${v.secret_ref.path}`;
+  return JSON.stringify({ _comment: `Profile: ${p.id}`, Variables: vars }, null, 2) + "\n";
+}
+
+
+function fmtHerokuJson(p) {
+  const vars = {};
+  for (const v of sv(p)) vars[v.key] = `ref:${v.secret_ref.backend}:${v.secret_ref.path}`;
+  return JSON.stringify({ _comment: `Profile: ${p.id}`, config: vars }, null, 2) + "\n";
+}
+
+function fmtFlyToml(p) {
+  const h = ["# Generated by zero-trust-deploy-config", `# Profile: ${p.name} (${p.environment})`, "", "[env]"];
+  for (const v of sv(p)) {
+    if (!v.required) h.push(`  ${v.key} = "ref:${v.secret_ref.backend}:${v.secret_ref.path}"`);
+  }
+  h.push("", "# Secrets managed via 'fly secrets set' — not stored in fly.toml");
+  for (const v of sv(p)) {
+    if (v.required) h.push(`# ${v.key} = <resolve from ${v.secret_ref.backend}:${v.secret_ref.path}>`);
+  }
+  return h.join("\n") + "\n";
+}
+
+function fmtRailwayJson(p) {
+  const vars = {};
+  for (const v of sv(p)) vars[v.key] = `ref:${v.secret_ref.backend}:${v.secret_ref.path}`;
+  return JSON.stringify({ _comment: `Profile: ${p.id}`, variables: vars }, null, 2) + "\n";
+}
+
+function fmtRenderYaml(p) {
+  const h = ["# Generated by zero-trust-deploy-config", `# Profile: ${p.name} (${p.environment})`, "", "envVars:"];
+  for (const v of sv(p)) {
+    h.push(`  - key: ${v.key}`);
+    h.push(`    value: "ref:${v.secret_ref.backend}:${v.secret_ref.path}"`);
+  }
+  return h.join("\n") + "\n";
+}
+
+function fmtNetlifyToml(p) {
+  const h = ["# Generated by zero-trust-deploy-config", `# Profile: ${p.name} (${p.environment})`, "", "[context.production.environment]"];
+  for (const v of sv(p)) {
+    h.push(`  ${v.key} = "ref:${v.secret_ref.backend}:${v.secret_ref.path}"`);
+  }
+  return h.join("\n") + "\n";
+}
+
+function fmtTerraformTfvars(p) {
+  const h = ["# Generated by zero-trust-deploy-config", `# Profile: ${p.name} (${p.environment})`, "# Use TF_VAR_ prefix when setting as env vars", ""];
+  for (const v of sv(p)) {
+    const name = v.key.replace(/^TF_VAR_/, "");
+    h.push(`${name} = "ref:${v.secret_ref.backend}:${v.secret_ref.path}"`);
+  }
+  return h.join("\n") + "\n";
+}
+
+function fmtCircleCiYaml(p) {
+  const h = ["# Generated by zero-trust-deploy-config", `# Profile: ${p.name} (${p.environment})`, "version: 2.1", "", "jobs:", "  deploy:", "    environment:"];
+  for (const v of sv(p)) h.push(`      ${v.key}: \${{ ${v.key} }}`);
+  return h.join("\n") + "\n";
+}
+
+function fmtGitlabCiYaml(p) {
+  const h = ["# Generated by zero-trust-deploy-config", `# Profile: ${p.name} (${p.environment})`, "", "variables:"];
+  for (const v of sv(p)) h.push(`  ${v.key}: "\$${v.key}"`);
+  return h.join("\n") + "\n";
+}
+
+function fmtWranglerToml(p) {
+  const h = ["# Generated by zero-trust-deploy-config", `# Profile: ${p.name} (${p.environment})`, ""];
+  const plainVars = sv(p).filter(v => !v.required);
+  const secretVars = sv(p).filter(v => v.required);
+  if (plainVars.length) {
+    h.push("[vars]");
+    for (const v of plainVars) h.push(`${v.key} = "ref:${v.secret_ref.backend}:${v.secret_ref.path}"`);
+  }
+  if (secretVars.length) {
+    h.push("", "# Secrets — set via 'wrangler secret put'");
+    for (const v of secretVars) h.push(`# ${v.key} = <resolve from ${v.secret_ref.backend}:${v.secret_ref.path}>`);
+  }
+  return h.join("\n") + "\n";
+}
+
+function fmtNomadHcl(p) {
+  const h = ["# Generated by zero-trust-deploy-config", `# Profile: ${p.name} (${p.environment})`, "", 'job "' + p.id + '" {', '  group "app" {', '    task "service" {', '      env {'];
+  for (const v of sv(p)) h.push(`        ${v.key} = "ref:${v.secret_ref.backend}:${v.secret_ref.path}"`);
+  h.push("      }", "    }", "  }", "}");
+  return h.join("\n") + "\n";
+}
+
+
+function fmtHerokuJson(p) {
+  const vars = {};
+  for (const v of sv(p)) vars[v.key] = `ref:${v.secret_ref.backend}:${v.secret_ref.path}`;
+  return JSON.stringify({ _comment: `Profile: ${p.id}`, config: vars }, null, 2) + "\n";
+}
+
+function fmtFlyToml(p) {
+  const h = ["# Generated by zero-trust-deploy-config", `# Profile: ${p.name} (${p.environment})`, "", "[env]"];
+  for (const v of sv(p)) {
+    if (!v.required) h.push(`  ${v.key} = "ref:${v.secret_ref.backend}:${v.secret_ref.path}"`);
+  }
+  h.push("", "# Secrets managed via 'fly secrets set' — not stored in fly.toml");
+  for (const v of sv(p)) {
+    if (v.required) h.push(`# ${v.key} = <resolve from ${v.secret_ref.backend}:${v.secret_ref.path}>`);
+  }
+  return h.join("\n") + "\n";
+}
+
+function fmtRailwayJson(p) {
+  const vars = {};
+  for (const v of sv(p)) vars[v.key] = `ref:${v.secret_ref.backend}:${v.secret_ref.path}`;
+  return JSON.stringify({ _comment: `Profile: ${p.id}`, variables: vars }, null, 2) + "\n";
+}
+
+function fmtRenderYaml(p) {
+  const h = ["# Generated by zero-trust-deploy-config", `# Profile: ${p.name} (${p.environment})`, "", "envVars:"];
+  for (const v of sv(p)) {
+    h.push(`  - key: ${v.key}`);
+    h.push(`    value: "ref:${v.secret_ref.backend}:${v.secret_ref.path}"`);
+  }
+  return h.join("\n") + "\n";
+}
+
+function fmtNetlifyToml(p) {
+  const h = ["# Generated by zero-trust-deploy-config", `# Profile: ${p.name} (${p.environment})`, "", "[context.production.environment]"];
+  for (const v of sv(p)) {
+    h.push(`  ${v.key} = "ref:${v.secret_ref.backend}:${v.secret_ref.path}"`);
+  }
+  return h.join("\n") + "\n";
+}
+
+function fmtTerraformTfvars(p) {
+  const h = ["# Generated by zero-trust-deploy-config", `# Profile: ${p.name} (${p.environment})`, "# Use TF_VAR_ prefix when setting as env vars", ""];
+  for (const v of sv(p)) {
+    const name = v.key.replace(/^TF_VAR_/, "");
+    h.push(`${name} = "ref:${v.secret_ref.backend}:${v.secret_ref.path}"`);
+  }
+  return h.join("\n") + "\n";
+}
+
+function fmtCircleCiYaml(p) {
+  const h = ["# Generated by zero-trust-deploy-config", `# Profile: ${p.name} (${p.environment})`, "version: 2.1", "", "jobs:", "  deploy:", "    environment:"];
+  for (const v of sv(p)) h.push(`      ${v.key}: \${{ ${v.key} }}`);
+  return h.join("\n") + "\n";
+}
+
+function fmtGitlabCiYaml(p) {
+  const h = ["# Generated by zero-trust-deploy-config", `# Profile: ${p.name} (${p.environment})`, "", "variables:"];
+  for (const v of sv(p)) h.push(`  ${v.key}: "\$${v.key}"`);
+  return h.join("\n") + "\n";
+}
+
+function fmtWranglerToml(p) {
+  const h = ["# Generated by zero-trust-deploy-config", `# Profile: ${p.name} (${p.environment})`, ""];
+  const plainVars = sv(p).filter(v => !v.required);
+  const secretVars = sv(p).filter(v => v.required);
+  if (plainVars.length) {
+    h.push("[vars]");
+    for (const v of plainVars) h.push(`${v.key} = "ref:${v.secret_ref.backend}:${v.secret_ref.path}"`);
+  }
+  if (secretVars.length) {
+    h.push("", "# Secrets — set via 'wrangler secret put'");
+    for (const v of secretVars) h.push(`# ${v.key} = <resolve from ${v.secret_ref.backend}:${v.secret_ref.path}>`);
+  }
+  return h.join("\n") + "\n";
+}
+
+function fmtNomadHcl(p) {
+  const h = ["# Generated by zero-trust-deploy-config", `# Profile: ${p.name} (${p.environment})`, "", 'job "' + p.id + '" {', '  group "app" {', '    task "service" {', '      env {'];
+  for (const v of sv(p)) h.push(`        ${v.key} = "ref:${v.secret_ref.backend}:${v.secret_ref.path}"`);
+  h.push("      }", "    }", "  }", "}");
+  return h.join("\n") + "\n";
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   RENDER: OVERVIEW
+   ══════════════════════════════════════════════════════════════════════ */
+function renderOverview() {
+  const pid = document.getElementById("ov-profile").value;
+  const p = profiles[pid];
+  const out = document.getElementById("ov-out");
+
+  if (!p) {
+    out.innerHTML = `<div class="card"><div class="empty">
+      <div style="font-size:2rem; margin-bottom:8px;">👆</div>
+      <p>Select a profile above — or load demos to get started.</p>
+      <p class="muted" style="font-size:12px; margin-top:6px;">No server needed. Validation + export runs entirely in your browser.</p>
+    </div></div>`;
+    return;
+  }
+
+  const c = contracts[p.platform] || {};
+  const cName = c.name || p.platform;
+  const req = p.vars.filter(v => v.required).length;
+  const opt = p.vars.filter(v => !v.required).length;
+  const backs = [...new Set(p.vars.map(v => v.secret_ref.backend))];
+
+  let html = "";
+
+  // ── Summary ──
+  html += `<div class="card">
+    <div class="flex-b" style="flex-direction:row; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+      <h3 style="margin:0;">${esc(p.name)}</h3>
+      <span class="muted" style="font-size:12px;">${esc(p.id)} · ${esc(p.environment)}</span>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="sv" style="color:var(--accent); font-size:14px;">${esc(cName)}</div><div class="sl">Platform</div></div>
+      <div class="stat"><div class="sv">${p.vars.length}</div><div class="sl">Total Vars</div></div>
+      <div class="stat"><div class="sv" style="color:var(--warn);">${req}</div><div class="sl">Required</div></div>
+      <div class="stat"><div class="sv">${opt}</div><div class="sl">Optional</div></div>
+      <div class="stat"><div class="sv">${backs.length}</div><div class="sl">Backends</div></div>
+    </div>
+    <div>${backs.map(b => `<span class="tag tag-i">${esc(b)}</span>`).join(" ")}</div>
+    <table style="margin-top:10px;">
+      <tr><th>Key</th><th>Backend</th><th>Path</th><th>Req</th></tr>
+      ${p.vars.map(v => `<tr>
+        <td><code>${esc(v.key)}</code></td>
+        <td><span class="tag tag-i">${esc(v.secret_ref.backend)}</span></td>
+        <td style="font-size:11px;">${esc(v.secret_ref.path)}</td>
+        <td>${v.required ? '<span class="tag tag-w">yes</span>' : '<span class="tag tag-i">no</span>'}</td>
+      </tr>`).join("")}
+    </table>
+  </div>`;
+
+  // ── Validation ──
+  if (c.id) {
+    const r = validate(p, c);
+    const cls = r.valid ? "rbox-ok" : "rbox-err";
+    const icon = r.valid ? "✅" : "❌";
+    const sum = r.valid ? "All checks passed — ready to deploy." : `${r.errors} error(s), ${r.warnings} warning(s)`;
+    let issHtml = "";
+    if (r.issues.length) {
+      issHtml = `<ul class="issues" style="margin-top:8px;">
+        ${r.issues.map(i => `<li>
+          <span class="tag ${i.sev === 'error' ? 'tag-e' : 'tag-w'}">${esc(i.sev)}</span>
+          <span class="tag tag-i">${esc(i.rule)}</span>
+          ${i.key ? `<code>${esc(i.key)}</code> — ` : ""}${esc(i.msg)}
+        </li>`).join("")}
+      </ul>`;
+    }
+    html += `<div class="${cls} rbox">
+      <div class="flex-b" style="flex-direction:row; align-items:center;">
+        <strong>${icon} Validation: ${r.valid ? "Pass" : "Fail"}</strong>
+        <span class="muted" style="font-size:11px;">${esc(sum)}</span>
+      </div>
+      ${issHtml}
+    </div>`;
+  }
+
+  // ── Exports ──
+  const fmts = c.export_formats ? [...new Set([...c.export_formats, "env-file"])] : ["env-file"];
+  const avail = fmts.filter(f => FMT[f]).sort();
+
+  if (avail.length) {
+    let tabs = `<div class="fmt-tabs" id="ov-fmt-tabs">`;
+    let panels = "";
+    avail.forEach((f, i) => {
+      const act = i === 0 ? " active" : "";
+      tabs += `<button class="${act}" data-f="${esc(f)}" onclick="switchFmt(this)">${esc(f)}</button>`;
+      panels += `<div class="fmt-panel${act}" data-f="${esc(f)}">
+        <div style="display:flex; justify-content:flex-end; padding:6px 10px 0;"><button class="cp" onclick="cpCode(this)">📋 Copy</button></div>
+        <pre style="margin-top:0; border-top:none; border-radius:0 0 var(--radius) var(--radius);"><code>${esc(FMT[f](p))}</code></pre>
+      </div>`;
+    });
+    tabs += `</div>`;
+
+    html += `<div class="card" style="padding:0; overflow:hidden;">
+      <div style="padding:12px 14px 0;">
+        <h3 style="margin-bottom:4px;">📄 Export Previews</h3>
+        <p class="muted" style="font-size:11px; margin-bottom:8px;">
+          ${avail.length} format${avail.length > 1 ? "s" : ""} — deployment-ready, just copy and use.
+        </p>
+      </div>
+      ${tabs}${panels}
+    </div>`;
+  }
+
+  out.innerHTML = html;
+}
+
+function switchFmt(btn) {
+  const f = btn.dataset.f;
+  btn.closest(".card").querySelectorAll(".fmt-tabs button").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  btn.closest(".card").querySelectorAll(".fmt-panel").forEach(p => p.classList.remove("active"));
+  const panel = btn.closest(".card").querySelector(`.fmt-panel[data-f="${f}"]`);
+  if (panel) panel.classList.add("active");
+}
+
+function cpCode(btn) {
+  const code = btn.closest(".fmt-panel").querySelector("code");
+  if (code) navigator.clipboard.writeText(code.textContent).then(() => {
+    btn.textContent = "✅ Copied!"; setTimeout(() => btn.textContent = "📋 Copy", 1500);
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   RENDER: PLATFORMS (collapsible on Overview)
+   ══════════════════════════════════════════════════════════════════════ */
+function renderPlatforms() {
+  const grid = document.getElementById("plat-grid");
+  const ids = Object.keys(contracts).sort();
+  document.getElementById("plat-count").textContent = ids.length;
+
+  grid.innerHTML = ids.map(id => {
+    const c = contracts[id];
+    return `<div class="card" style="margin-bottom:0;">
+      <h3>${esc(c.name)}</h3>
+      <p class="muted" style="font-size:12px; margin-bottom:8px;">${esc(c.notes)}</p>
+      <div style="margin-bottom:6px;">
+        <span class="tag tag-i">${esc(c.category)}</span>
+        ${c.required_vars.length ? `<span class="tag tag-w">${c.required_vars.length} required</span>` : ""}
+        ${c.max_vars ? `<span class="tag tag-i">max ${c.max_vars}</span>` : ""}
+      </div>
+      <table>
+        <tr><th>Naming</th><td style="font-size:11px;">${esc(c.naming_description || c.naming_pattern)}</td></tr>
+        ${c.forbidden_prefixes.length ? `<tr><th>Forbidden</th><td style="font-size:11px;">${c.forbidden_prefixes.map(p => `<code>${esc(p)}</code>`).join(", ")}</td></tr>` : ""}
+        <tr><th>Backends</th><td style="font-size:11px;">${c.secret_backends.map(b => `<code>${esc(b)}</code>`).join(", ")}</td></tr>
+        <tr><th>Formats</th><td>${c.export_formats.map(f => `<span class="tag tag-i">${esc(f)}</span>`).join(" ")}</td></tr>
+      </table>
+      ${c.docs_url ? `<a href="${esc(c.docs_url)}" target="_blank" style="font-size:11px; color:var(--accent); display:block; margin-top:6px;">📖 Docs →</a>` : ""}
+    </div>`;
+  }).join("");
+}
+
+function togglePlatforms() {
+  const body = document.getElementById("plat-body");
+  const label = document.getElementById("plat-toggle-label");
+  const isOpen = body.classList.toggle("open");
+  label.textContent = isOpen ? "Hide Platform Contracts" : "Show Platform Contracts";
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   RENDER: PROFILES
+   ══════════════════════════════════════════════════════════════════════ */
+function renderProfiles() {
+  const list = document.getElementById("profile-list");
+  const ids = Object.keys(profiles).sort();
+  if (!ids.length) {
+    list.innerHTML = `<div class="empty">No profiles yet. Click <strong>+ New Profile</strong> to create one.</div>`;
+    return;
+  }
+  list.innerHTML = ids.map(id => {
+    const p = profiles[id];
+    const cN = (contracts[p.platform] || {}).name || p.platform;
+    return `<div class="card">
+      <div class="flex-b" style="flex-direction:row; flex-wrap:wrap;">
+        <div>
+          <h3 style="margin:0;">${esc(p.name)}</h3>
+          <span class="muted" style="font-size:11px;">${esc(p.id)} — ${esc(cN)} — ${esc(p.environment)} — ${p.vars.length} vars</span>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-s btn-sec" onclick="viewInOverview('${esc(id)}')">👁 View</button>
+          <button class="btn btn-s btn-sec" onclick="editProfile('${esc(id)}')">Edit</button>
+          <button class="btn btn-s btn-err" onclick="deleteProfile('${esc(id)}')">Delete</button>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function viewInOverview(id) {
+  goTo("overview");
+  document.getElementById("ov-profile").value = id;
+  renderOverview();
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PROFILE FORM
+   ══════════════════════════════════════════════════════════════════════ */
+let editingId = null;
+
+function showCreateProfile() {
+  editingId = null;
+  document.getElementById("pf-title").textContent = "New Profile";
+  document.getElementById("pf-id").value = ""; document.getElementById("pf-id").disabled = false;
+  document.getElementById("pf-name").value = "";
+  populatePlatformSelect();
+  document.getElementById("pf-env").value = "production";
+  document.getElementById("var-rows").innerHTML = "";
+  addVarRow();
+  document.getElementById("profile-form").classList.remove("hidden");
+}
+
+function editProfile(id) {
+  const p = profiles[id]; if (!p) return;
+  editingId = id;
+  document.getElementById("pf-title").textContent = "Edit Profile";
+  document.getElementById("pf-id").value = p.id; document.getElementById("pf-id").disabled = true;
+  document.getElementById("pf-name").value = p.name;
+  populatePlatformSelect();
+  document.getElementById("pf-platform").value = p.platform;
+  document.getElementById("pf-env").value = p.environment;
+  document.getElementById("var-rows").innerHTML = "";
+  for (const v of p.vars) addVarRow(v);
+  document.getElementById("profile-form").classList.remove("hidden");
+}
+
+function cancelForm() { document.getElementById("profile-form").classList.add("hidden"); editingId = null; }
+
+function populatePlatformSelect() {
+  const s = document.getElementById("pf-platform");
+  s.innerHTML = Object.keys(contracts).sort().map(id => `<option value="${esc(id)}">${esc(contracts[id].name)}</option>`).join("");
+}
+
+function addVarRow(x) {
+  const c = document.getElementById("var-rows");
+  const r = document.createElement("div"); r.className = "var-entry";
+  r.innerHTML = `
+    <div class="form-row-inline">
+      <div><label>Key</label><input class="vr-key" value="${esc((x&&x.key)||"")}" placeholder="DATABASE_URL"></div>
+      <div><label>Backend</label><input class="vr-bk" value="${esc((x&&x.secret_ref&&x.secret_ref.backend)||"")}" placeholder="aws-ssm"></div>
+      <div><label>Path</label><input class="vr-pa" value="${esc((x&&x.secret_ref&&x.secret_ref.path)||"")}" placeholder="prod/db-url"></div>
+    </div>
+    <div class="form-row-inline" style="margin-top:4px;">
+      <div><label>Description</label><input class="vr-ds" value="${esc((x&&x.description)||"")}" placeholder="Connection string"></div>
+      <div style="flex:0 0 100px;"><label>Required</label>
+        <select class="vr-rq"><option value="true" ${(!x||x.required!==false)?"selected":""}>Yes</option><option value="false" ${(x&&x.required===false)?"selected":""}>No</option></select>
+      </div>
+      <div style="flex:0 0 50px; display:flex; align-items:end;">
+        <button class="btn btn-s btn-err" onclick="this.closest('.var-entry').remove()">✕</button>
+      </div>
+    </div>`;
+  c.appendChild(r);
+}
+
+function saveProfile() {
+  const id = document.getElementById("pf-id").value.trim();
+  const name = document.getElementById("pf-name").value.trim();
+  const platform = document.getElementById("pf-platform").value;
+  const environment = document.getElementById("pf-env").value;
+  if (!id || !name || !platform) { alert("ID, Name, and Platform are required."); return; }
+  const vars = [];
+  document.querySelectorAll("#var-rows .var-entry").forEach(row => {
+    const key = row.querySelector(".vr-key").value.trim();
+    const bk = row.querySelector(".vr-bk").value.trim();
+    const pa = row.querySelector(".vr-pa").value.trim();
+    const ds = row.querySelector(".vr-ds").value.trim();
+    const rq = row.querySelector(".vr-rq").value === "true";
+    if (key && bk && pa) vars.push({ key, secret_ref: { backend: bk, path: pa, version: null }, description: ds, required: rq });
+  });
+  profiles[id] = { id, name, platform, environment, vars, metadata: {} };
+  saveProfiles();
+  cancelForm();
+}
+
+function deleteProfile(id) {
+  if (!confirm(`Delete "${id}"?`)) return;
+  delete profiles[id];
+  saveProfiles();
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   SELECTS
+   ══════════════════════════════════════════════════════════════════════ */
+function populateSelects() {
+  const ids = Object.keys(profiles).sort();
+  const html = ids.length
+    ? ids.map(id => `<option value="${esc(id)}">${esc(profiles[id].name)} (${esc(id)})</option>`).join("")
+    : `<option value="">No profiles — create one first</option>`;
+  const s = document.getElementById("ov-profile");
+  if (s) s.innerHTML = html;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   SUBMIT CONTRACT
+   ══════════════════════════════════════════════════════════════════════ */
+async function submitContract() {
+  const user = document.getElementById("sub-user").value.trim();
+  const token = document.getElementById("sub-token").value.trim();
+  const jsonStr = document.getElementById("sub-json").value.trim();
+  const notes = document.getElementById("sub-notes").value.trim();
+  const rd = document.getElementById("submit-result");
+  if (!user || !token || !jsonStr) { alert("Username, token, and JSON required."); return; }
+  let data; try { data = JSON.parse(jsonStr); } catch(e) { alert("Invalid JSON: " + e.message); return; }
+  const errs = schemaCheck(data);
+  if (errs.length) {
+    rd.innerHTML = `<div class="rbox rbox-err"><strong>❌ Schema Errors</strong><ul class="issues">${errs.map(e => `<li><span class="tag tag-e">error</span> ${esc(e)}</li>`).join("")}</ul></div>`;
+    return;
+  }
+  const repo = "JoshuaWink/zero-trust-deploy-config";
+  const branch = `contract/${data.id}-${Date.now()}`;
+  const fp = `contracts/${data.id}.json`;
+  rd.innerHTML = `<div class="card"><p>⏳ Submitting...</p></div>`;
+  try {
+    const rr = await ghApi(`repos/${repo}`, token);
+    const ref = await ghApi(`repos/${repo}/git/ref/heads/${rr.default_branch}`, token);
+    await ghApi(`repos/${repo}/git/refs`, token, "POST", { ref: `refs/heads/${branch}`, sha: ref.object.sha });
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2) + "\n")));
+    await ghApi(`repos/${repo}/contents/${fp}`, token, "PUT", { message: `feat: add ${data.id} contract\n\nBy: ${user}`, content, branch });
+    const pr = await ghApi(`repos/${repo}/pulls`, token, "POST", {
+      title: `[contract] Add ${data.name || data.id}`, head: branch, base: rr.default_branch,
+      body: `## New Contract: ${data.name||data.id}\n\n**By:** @${user}\n**ID:** \`${data.id}\`\n\n${notes ? "### Notes\n"+notes : ""}\n\n---\n*Auto-submitted via dashboard.*`
+    });
+    rd.innerHTML = `<div class="rbox rbox-ok"><strong>✅ Submitted!</strong><p style="margin-top:6px;">PR #${pr.number}: <a href="${esc(pr.html_url)}" target="_blank" style="color:var(--accent);">${esc(pr.html_url)}</a></p></div>`;
+  } catch(e) {
+    rd.innerHTML = `<div class="rbox rbox-err"><strong>❌ Failed</strong><p style="margin-top:6px;">${esc(e.message)}</p></div>`;
+  }
+}
+
+async function ghApi(path, token, method, body) {
+  const opts = { method: method || "GET", headers: { "Authorization": `Bearer ${token}`, "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" } };
+  if (body) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+  const r = await fetch(`https://api.github.com/${path}`, opts);
+  if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(`GitHub ${r.status}: ${e.message||r.statusText}`); }
+  return r.json();
+}
+
+function schemaCheck(d) {
+  const e = [];
+  if (!d.id || typeof d.id !== "string") e.push("Missing 'id'.");
+  if (!d.name || typeof d.name !== "string") e.push("Missing 'name'.");
+  if (!d.category || typeof d.category !== "string") e.push("Missing 'category'.");
+  if (!d.naming || typeof d.naming !== "object") e.push("Missing 'naming' object.");
+  else if (!d.naming.pattern) e.push("Missing 'naming.pattern'.");
+  if (!d.limits || typeof d.limits !== "object") e.push("Missing 'limits'.");
+  if (!Array.isArray(d.secret_backends) || !d.secret_backends.length) e.push("'secret_backends' must be non-empty array.");
+  if (!Array.isArray(d.export_formats) || !d.export_formats.length) e.push("'export_formats' must be non-empty array.");
+  return e;
+}
+
+
+/* ═════════════════════════════════════════════════════════════════════════
+   RECIPE ENGINE — Loading, CRUD, Builder, Fork
+   ═════════════════════════════════════════════════════════════════════════ */
+const CUSTOM_RECIPES_KEY = "ztdc_custom_recipes";
+let customRecipes = {};
+let editingRecipeId = null;
+
+async function loadRecipes() {
+  try {
+    const base = getContractsBaseUrl().replace(/\/contracts$/, "/recipes");
+    const indexResp = await fetch(base + "/index.json");
+    if (!indexResp.ok) { console.warn("No recipes found"); return; }
+    const index = await indexResp.json();
+    const fetches = index.recipes.map(async (id) => {
+      const resp = await fetch(base + "/" + id + ".json");
+      if (resp.ok) { const d = await resp.json(); recipes[d.id] = d; }
+    });
+    await Promise.all(fetches);
+  } catch(e) { console.warn("Recipe loading failed:", e); }
+  loadCustomRecipes();
+}
+
+function loadCustomRecipes() {
+  try {
+    const raw = localStorage.getItem(CUSTOM_RECIPES_KEY);
+    if (raw) customRecipes = JSON.parse(raw);
+  } catch(e) { customRecipes = {}; }
+}
+
+function saveCustomRecipes() {
+  localStorage.setItem(CUSTOM_RECIPES_KEY, JSON.stringify(customRecipes));
+}
+
+// ── Sub-tab navigation ──
+function switchRecipeSub(sub) {
+  document.querySelectorAll(".recipe-sub").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".recipe-panel").forEach(p => p.style.display = "none");
+  const btn = document.querySelector(`.recipe-sub[data-rsub="${sub}"]`);
+  if (btn) btn.classList.add("active");
+  const panel = document.getElementById("rsub-" + sub);
+  if (panel) panel.style.display = "";
+  if (sub === "my") renderMyRecipes();
+  if (sub === "browse") renderRecipeDetail();
+}
+
+// ── Recipe counts ──
+function updateRecipeCounts() {
+  const cc = document.getElementById("community-count");
+  const uc = document.getElementById("custom-count");
+  if (cc) cc.textContent = Object.keys(recipes).length;
+  if (uc) uc.textContent = Object.keys(customRecipes).length;
+}
+
+// ── Community recipe select ──
+function populateRecipeSelect() {
+  const sel = document.getElementById("recipe-select");
+  const filter = document.getElementById("recipe-filter");
+  if (!sel) return;
+  const fv = filter ? filter.value : "";
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">\u2014 choose a recipe \u2014</option>';
+  const sorted = Object.values(recipes).sort((a,b) => a.name.localeCompare(b.name));
+  for (const r of sorted) {
+    if (fv && r.complexity !== fv) continue;
+    const opt = document.createElement("option");
+    opt.value = r.id;
+    opt.textContent = `${r.name} (${r.complexity})`;
+    sel.appendChild(opt);
+  }
+  if (cur && recipes[cur]) sel.value = cur;
+  updateRecipeCounts();
+}
+
+function filterRecipes() {
+  populateRecipeSelect();
+  renderRecipeDetail();
+}
+
+// ── Render community recipe detail (read-only view with Fork + Generate) ──
+function renderRecipeDetail() {
+  const sel = document.getElementById("recipe-select");
+  const out = document.getElementById("recipe-out");
+  const r = recipes[sel ? sel.value : ""];
+  if (!r) {
+    out.innerHTML = `<div class="card"><div class="empty">
+      <div style="font-size:2rem; margin-bottom:8px;">\ud83d\udcd6</div>
+      <p>Browse community-contributed deployment stacks.</p>
+      <p class="muted" style="font-size:12px; margin-top:6px;">Pick a recipe, then <strong>Fork</strong> it to customize, or <strong>Generate Profiles</strong> directly.</p>
+    </div></div>`;
+    return;
+  }
+  out.innerHTML = renderRecipeCard(r, true);
+}
+
+function renderRecipeCard(r, isCommunity) {
+  const roleIcons = { build:"\ud83d\udce6", ci:"\u2699\ufe0f", deploy:"\ud83d\ude80", secrets:"\ud83d\udd10", routing:"\ud83c\udf10", monitoring:"\ud83d\udcca", storage:"\ud83d\uddc4\ufe0f", iac:"\ud83c\udfd7\ufe0f", cdn:"\u26a1" };
+  const complexIcons = { starter:"\ud83c\udf31", intermediate:"\u2699\ufe0f", advanced:"\ud83d\udd25" };
+
+  const flowHtml = r.flow ? `<div style="background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; font-family:monospace; font-size:13px; color:var(--accent); text-align:center; margin:12px 0; letter-spacing:0.5px;">${esc(r.flow)}</div>` : "";
+
+  let stepsHtml = "";
+  for (const step of (r.steps || [])) {
+    const icon = roleIcons[step.role] || "\u2022";
+    const platName = contracts[step.platform] ? contracts[step.platform].name : step.platform;
+    const depStr = step.depends_on && step.depends_on.length ? `<span class="muted" style="font-size:11px;">depends on: ${step.depends_on.join(", ")}</span>` : "";
+
+    let varsHtml = "";
+    if (step.shared_vars && step.shared_vars.length) {
+      const rows = step.shared_vars.map(v =>
+        `<tr>
+          <td><code style="font-size:11px;">${esc(v.key)}</code></td>
+          <td style="font-size:11px;">${esc(v.description)}</td>
+          <td>${v.required ? '<span style="color:var(--error); font-size:11px;">required</span>' : '<span class="muted" style="font-size:11px;">optional</span>'}</td>
+          <td style="font-size:11px;"><span class="tag tag-i">${esc(v.suggested_backend || "\u2014")}</span></td>
+        </tr>`
+      ).join("");
+      varsHtml = `<table class="tbl" style="margin-top:8px; font-size:12px;">
+        <thead><tr><th>Variable</th><th>Description</th><th>Required</th><th>Backend</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    }
+
+    stepsHtml += `
+      <div class="card" style="border-left:3px solid var(--accent); margin-bottom:8px;">
+        <div class="flex-b" style="flex-direction:row; align-items:center; gap:8px; flex-wrap:wrap;">
+          <div>
+            <span style="font-size:16px;">${icon}</span>
+            <strong>${esc(step.label || step.id)}</strong>
+            <span class="tag tag-i" style="margin-left:6px;">${esc(platName)}</span>
+            <span class="tag" style="background:var(--surface2); color:var(--muted); margin-left:4px;">${esc(step.role)}</span>
+          </div>
+          ${depStr}
+        </div>
+        ${step.notes ? `<p class="muted" style="font-size:12px; margin-top:6px;">${esc(step.notes)}</p>` : ""}
+        ${varsHtml}
+      </div>`;
+  }
+
+  const totalVars = (r.steps||[]).reduce((n, s) => n + (s.shared_vars ? s.shared_vars.length : 0), 0);
+  const reqVars = (r.steps||[]).reduce((n, s) => n + (s.shared_vars ? s.shared_vars.filter(v => v.required).length : 0), 0);
+
+  const actionBtns = isCommunity
+    ? `<button class="btn" onclick="generateRecipeProfiles('${esc(r.id)}', false)">\ud83d\ude80 Generate Profiles</button>
+       <button class="btn btn-sec" onclick="forkRecipe('${esc(r.id)}')">\ud83d\udd00 Fork to My Recipes</button>`
+    : `<button class="btn" onclick="generateRecipeProfiles('${esc(r.id)}', true)">\ud83d\ude80 Generate Profiles</button>
+       <button class="btn btn-sec" onclick="editCustomRecipe('${esc(r.id)}')">\u270f\ufe0f Edit</button>
+       <button class="btn btn-s btn-err" onclick="deleteCustomRecipe('${esc(r.id)}')">\ud83d\uddd1 Delete</button>`;
+
+  return `
+    <div class="card">
+      <div class="flex-b" style="flex-direction:row; align-items:start; gap:12px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:250px;">
+          <h2 style="margin-bottom:4px;">${complexIcons[r.complexity] || ""} ${esc(r.name)}</h2>
+          <p class="muted" style="font-size:13px; margin-bottom:10px;">${esc(r.description || "")}</p>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; font-size:12px;">
+            <span class="tag tag-i">${esc(r.category || "")}</span>
+            <span class="tag" style="background:var(--surface2); color:var(--muted);">${(r.steps||[]).length} step${(r.steps||[]).length!==1?"s":""}</span>
+            <span class="tag" style="background:var(--surface2); color:var(--muted);">${totalVars} vars (${reqVars} required)</span>
+            <span class="tag" style="background:var(--surface2); color:var(--muted);">${esc(r.complexity || "")}</span>
+            ${isCommunity ? '<span class="tag" style="background:#23863620; color:var(--success);">community</span>' : '<span class="tag" style="background:#d2992020; color:var(--warn);">custom</span>'}
+          </div>
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          ${actionBtns}
+        </div>
+      </div>
+      ${flowHtml}
+      ${r.notes ? `<p style="font-size:12px; color:var(--warn); margin-top:8px;">\ud83d\udca1 ${esc(r.notes)}</p>` : ""}
+    </div>
+    <h3 style="margin:16px 0 8px; font-size:14px; color:var(--muted);">Pipeline Steps (${(r.steps||[]).length})</h3>
+    ${stepsHtml}
+    <div id="recipe-gen-msg" style="margin-top:12px;"></div>
+  `;
+}
+
+// ── My Recipes list ──
+function renderMyRecipes() {
+  const out = document.getElementById("my-recipes-list");
+  if (!out) return;
+  const keys = Object.keys(customRecipes).sort();
+  if (keys.length === 0) {
+    out.innerHTML = `<div class="card"><div class="empty">
+      <div style="font-size:2rem; margin-bottom:8px;">\u2b50</div>
+      <p>No custom recipes yet.</p>
+      <p class="muted" style="font-size:12px; margin-top:6px;">Fork a community recipe or build one from scratch in the <strong>Builder</strong> tab.</p>
+    </div></div>`;
+    return;
+  }
+  let html = "";
+  for (const id of keys) {
+    const r = customRecipes[id];
+    html += renderRecipeCard(r, false);
+  }
+  out.innerHTML = html;
+  updateRecipeCounts();
+}
+
+// ── Fork community recipe ──
+function forkRecipe(id) {
+  const src = recipes[id];
+  if (!src) return;
+  const newId = src.id + "-custom";
+  let fid = newId;
+  let n = 1;
+  while (customRecipes[fid]) { fid = newId + "-" + (++n); }
+  const clone = JSON.parse(JSON.stringify(src));
+  clone.id = fid;
+  clone.name = src.name + " (My Fork)";
+  customRecipes[fid] = clone;
+  saveCustomRecipes();
+  updateRecipeCounts();
+  switchRecipeSub("build");
+  loadRecipeIntoBuilder(fid);
+}
+
+// ── Generate profiles from recipe ──
+function generateRecipeProfiles(recipeId, isCustom) {
+  const r = isCustom ? customRecipes[recipeId] : recipes[recipeId];
+  if (!r) return;
+  let created = 0;
+  let skippedSteps = [];
+  for (const step of (r.steps || [])) {
+    const pid = `${r.id}-${step.id}`;
+    if (profiles[pid]) continue;
+    const c = contracts[step.platform];
+    if (!c) { skippedSteps.push(step.platform + ' (' + (step.label || step.id) + ')'); continue; }
+    const vars = (step.shared_vars || []).map(v => ({
+      key: v.key,
+      description: v.description,
+      required: v.required || false,
+      secret_ref: {
+        backend: v.suggested_backend || c.secret_backends[0] || "env-file",
+        path: v.suggested_path || v.key.toLowerCase(),
+        version: null
+      }
+    }));
+    profiles[pid] = {
+      id: pid,
+      name: `${r.name} \u2014 ${step.label || step.id}`,
+      platform: step.platform,
+      environment: "production",
+      vars: vars,
+      metadata: { recipe: r.id, step: step.id }
+    };
+    created++;
+  }
+  saveProfiles();
+  refreshAll();
+  const msg = document.getElementById("recipe-gen-msg");
+  if (msg) {
+    if (created > 0) {
+      msg.innerHTML = `<div style="background:#23863620; border:1px solid var(--success); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--success);">
+        \u2705 Generated ${created} profile${created>1?"s":""}! Switch to <strong>Profiles</strong> or <strong>Overview</strong> to validate and export.
+      </div>`;
+    } else {
+      msg.innerHTML = `<div style="background:#1f6feb20; border:1px solid var(--accent); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--accent);">
+        All profiles for this recipe already exist. Delete them from Profiles tab to regenerate.
+      </div>`;
+    }
+
+  // Report skipped unknown-platform steps
+  if (skippedSteps.length > 0 && msg) {
+    const skipHtml = `<div style="background:#d2992020; border:1px solid var(--warn, #d29920); border-radius:var(--radius); padding:8px 12px; font-size:12px; color:var(--warn, #d29920); margin-top:6px;">
+      ⚠️ <strong>${skippedSteps.length} step${skippedSteps.length > 1 ? "s" : ""} skipped</strong> (unknown platform${skippedSteps.length > 1 ? "s" : ""}):<br>
+      ${skippedSteps.map(s => "• " + s).join("<br>")}
+      <br><em>Import these platforms as contracts in the Recipe Builder to include them.</em>
+    </div>`;
+    const skipDiv = document.createElement("div");
+    skipDiv.innerHTML = skipHtml;
+    msg.appendChild(skipDiv.firstElementChild);
+  }
+
+  }
+}
+
+// ══════════════════════════════════════════════════
+// RECIPE BUILDER
+// ══════════════════════════════════════════════════
+const STEP_ROLES = ["build","ci","deploy","secrets","routing","monitoring","storage","iac","cdn"];
+let builderSteps = [];
+
+function startNewRecipe() {
+  editingRecipeId = null;
+  document.getElementById("rb-title").textContent = "Build a Recipe";
+  document.getElementById("rb-id").value = "";
+  document.getElementById("rb-id").disabled = false;
+  document.getElementById("rb-name").value = "";
+  document.getElementById("rb-desc").value = "";
+  document.getElementById("rb-category").value = "api";
+  document.getElementById("rb-complexity").value = "starter";
+  builderSteps = [];
+  renderBuilderSteps();
+  document.getElementById("rb-msg").innerHTML = "";
+}
+
+function addRecipeStep() {
+  builderSteps.push({
+    id: "step-" + (builderSteps.length + 1),
+    platform: Object.keys(contracts).sort()[0] || "",
+    role: "deploy",
+    label: "",
+    depends_on: [],
+    shared_vars: [],
+    notes: ""
+  });
+  renderBuilderSteps();
+}
+
+function removeRecipeStep(idx) {
+  builderSteps.splice(idx, 1);
+  renderBuilderSteps();
+}
+
+function moveStepUp(idx) {
+  if (idx <= 0) return;
+  [builderSteps[idx-1], builderSteps[idx]] = [builderSteps[idx], builderSteps[idx-1]];
+  renderBuilderSteps();
+}
+
+function moveStepDown(idx) {
+  if (idx >= builderSteps.length - 1) return;
+  [builderSteps[idx], builderSteps[idx+1]] = [builderSteps[idx+1], builderSteps[idx]];
+  renderBuilderSteps();
+}
+
+function renderBuilderSteps() {
+  const cont = document.getElementById("rb-steps");
+  const empty = document.getElementById("rb-no-steps");
+  if (!cont) return;
+  if (builderSteps.length === 0) {
+    cont.innerHTML = "";
+    if (empty) empty.style.display = "";
+    return;
+  }
+  if (empty) empty.style.display = "none";
+
+  const knownPlatformOpts = Object.keys(contracts).sort().map(id =>
+    `<option value="${esc(id)}">${esc(contracts[id].name)}</option>`
+  ).join("");
+
+  const roleOpts = STEP_ROLES.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join("");
+
+  let html = "";
+  builderSteps.forEach((step, idx) => {
+    const varsHtml = (step.shared_vars || []).map((v, vi) => `
+      <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px; flex-wrap:wrap;">
+        <input style="width:140px; font-size:11px;" placeholder="KEY_NAME" value="${esc(v.key)}" onchange="updateStepVar(${idx},${vi},'key',this.value)">
+        <input style="flex:1; min-width:120px; font-size:11px;" placeholder="Description" value="${esc(v.description)}" onchange="updateStepVar(${idx},${vi},'description',this.value)">
+        <select style="width:100px; font-size:11px;" onchange="updateStepVar(${idx},${vi},'suggested_backend',this.value)">
+          ${(contracts[step.platform] ? contracts[step.platform].secret_backends : []).map(b =>
+            `<option value="${esc(b)}" ${v.suggested_backend===b?"selected":""}>${esc(b)}</option>`
+          ).join("")}
+        </select>
+        <label style="font-size:11px; display:flex; align-items:center; gap:2px; margin:0;">
+          <input type="checkbox" ${v.required?"checked":""} onchange="updateStepVar(${idx},${vi},'required',this.checked)"> req
+        </label>
+        <button class="btn btn-s btn-err" style="padding:2px 6px; font-size:10px;" onclick="removeStepVar(${idx},${vi})">\u2715</button>
+      </div>
+    `).join("");
+
+    html += `
+      <div class="card" style="border-left:3px solid var(--accent); margin-bottom:8px; padding:10px 14px;">
+        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:8px;">
+          <span class="muted" style="font-size:11px; font-weight:600;">Step ${idx+1}</span>
+          <button class="btn btn-s btn-sec" style="padding:1px 6px; font-size:10px;" onclick="moveStepUp(${idx})" ${idx===0?"disabled":""}>&#9650;</button>
+          <button class="btn btn-s btn-sec" style="padding:1px 6px; font-size:10px;" onclick="moveStepDown(${idx})" ${idx===builderSteps.length-1?"disabled":""}>&#9660;</button>
+          <span style="flex:1;"></span>
+          <button class="btn btn-s btn-err" style="padding:2px 8px; font-size:11px;" onclick="removeRecipeStep(${idx})">\ud83d\uddd1 Remove</button>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
+          <div style="flex:1; min-width:140px;">
+            <label style="font-size:11px;">Platform</label>
+            <select value="${esc(step.platform)}" onchange="updateStep(${idx},'platform',this.value); renderBuilderSteps();">
+              ${(() => {
+                const isUnknown = step.platform && !contracts[step.platform];
+                let opts = knownPlatformOpts;
+                if (isUnknown) {
+                  opts = `<option value="${esc(step.platform)}" selected>⚠️ ${esc(step.platform)} (unknown)</option>` + opts;
+                } else {
+                  opts = opts.replace(`value="${esc(step.platform)}"`, `value="${esc(step.platform)}" selected`);
+                }
+                return opts;
+              })()}
+            </select>
+          </div>
+          <div style="flex:1; min-width:100px;">
+            <label style="font-size:11px;">Role</label>
+            <select onchange="updateStep(${idx},'role',this.value)">
+              ${roleOpts.replace(`value="${esc(step.role)}"`, `value="${esc(step.role)}" selected`)}
+            </select>
+          </div>
+          <div style="flex:1; min-width:140px;">
+            <label style="font-size:11px;">Label</label>
+            <input value="${esc(step.label)}" placeholder="e.g. CI Pipeline" onchange="updateStep(${idx},'label',this.value)">
+          </div>
+          <div style="flex:1; min-width:100px;">
+            <label style="font-size:11px;">Step ID</label>
+            <input value="${esc(step.id)}" placeholder="step-id" onchange="updateStep(${idx},'id',this.value)">
+          </div>
+        </div>
+        <div style="margin-bottom:6px;">
+          <label style="font-size:11px;">Notes</label>
+          <input value="${esc(step.notes || "")}" placeholder="Optional notes..." style="font-size:11px;" onchange="updateStep(${idx},'notes',this.value)">
+        </div>
+        <div>
+          <div class="flex-b" style="flex-direction:row; margin-bottom:4px;">
+            <label style="font-size:11px; margin:0;">Variables</label>
+            <button class="btn btn-s btn-sec" style="padding:1px 6px; font-size:10px;" onclick="addStepVar(${idx})">+ var</button>
+          </div>
+          ${varsHtml || '<span class="muted" style="font-size:11px;">No variables. Click + var to add.</span>'}
+        </div>
+      </div>
+    `;
+  });
+  cont.innerHTML = html;
+}
+
+function updateStep(idx, key, val) { builderSteps[idx][key] = val; }
+function updateStepVar(si, vi, key, val) { builderSteps[si].shared_vars[vi][key] = val; }
+
+function addStepVar(idx) {
+  const c = contracts[builderSteps[idx].platform];
+  builderSteps[idx].shared_vars.push({
+    key: "", description: "", required: false,
+    suggested_backend: c ? (c.secret_backends[0] || "env-file") : "env-file",
+    suggested_path: ""
+  });
+  renderBuilderSteps();
+}
+
+function removeStepVar(si, vi) {
+  builderSteps[si].shared_vars.splice(vi, 1);
+  renderBuilderSteps();
+}
+
+function saveCustomRecipe() {
+  const id = document.getElementById("rb-id").value.trim();
+  const name = document.getElementById("rb-name").value.trim();
+  const desc = document.getElementById("rb-desc").value.trim();
+  const category = document.getElementById("rb-category").value;
+  const complexity = document.getElementById("rb-complexity").value;
+  const msg = document.getElementById("rb-msg");
+
+  const errors = [];
+  if (!id || !/^[a-z][a-z0-9-]*$/.test(id)) errors.push("ID must be kebab-case (e.g. my-api-stack)");
+  if (!name) errors.push("Name is required");
+  if (builderSteps.length === 0) errors.push("Add at least one step");
+  // Check for duplicate step IDs
+  const stepIds = builderSteps.map(s => s.id);
+  if (new Set(stepIds).size !== stepIds.length) errors.push("Step IDs must be unique");
+
+  if (!editingRecipeId && (recipes[id] || customRecipes[id])) errors.push(`ID '${id}' already exists`);
+
+  if (errors.length) {
+    msg.innerHTML = `<div style="background:#f8514920; border:1px solid var(--error); border-radius:var(--radius); padding:10px 14px; font-size:12px; color:var(--error);">\u274c ${errors.join("<br>")}</div>`;
+    return;
+  }
+
+  // Build flow string from steps
+  const flow = builderSteps.map(s => {
+    const platName = contracts[s.platform] ? contracts[s.platform].name : s.platform;
+    return `${platName} (${s.label || s.role})`;
+  }).join(" \u2192 ");
+
+  const recipe = {
+    id: id,
+    name: name,
+    description: desc,
+    category: category,
+    complexity: complexity,
+    flow: flow,
+    steps: builderSteps.map(s => ({
+      id: s.id,
+      platform: s.platform,
+      role: s.role,
+      label: s.label || s.id,
+      depends_on: s.depends_on || [],
+      shared_vars: (s.shared_vars || []).filter(v => v.key.trim()),
+      notes: s.notes || ""
+    })),
+    notes: ""
+  };
+
+  if (editingRecipeId && editingRecipeId !== id) {
+    delete customRecipes[editingRecipeId];
+  }
+  customRecipes[id] = recipe;
+  saveCustomRecipes();
+  updateRecipeCounts();
+  editingRecipeId = null;
+
+  msg.innerHTML = `<div style="background:#23863620; border:1px solid var(--success); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--success);">
+    \u2705 Recipe <strong>${esc(name)}</strong> saved! View it in <strong>My Recipes</strong>.
+  </div>`;
+}
+
+function cancelRecipeBuilder() {
+  editingRecipeId = null;
+  startNewRecipe();
+  switchRecipeSub("my");
+}
+
+function editCustomRecipe(id) {
+  switchRecipeSub("build");
+  loadRecipeIntoBuilder(id);
+}
+
+function loadRecipeIntoBuilder(id) {
+  const r = customRecipes[id];
+  if (!r) return;
+  editingRecipeId = id;
+  document.getElementById("rb-title").textContent = "Edit Recipe: " + r.name;
+  document.getElementById("rb-id").value = r.id;
+  document.getElementById("rb-id").disabled = true;
+  document.getElementById("rb-name").value = r.name;
+  document.getElementById("rb-desc").value = r.description || "";
+  document.getElementById("rb-category").value = r.category || "api";
+  document.getElementById("rb-complexity").value = r.complexity || "starter";
+  builderSteps = JSON.parse(JSON.stringify(r.steps || []));
+  renderBuilderSteps();
+  document.getElementById("rb-msg").innerHTML = "";
+}
+
+function deleteCustomRecipe(id) {
+  if (!confirm(`Delete recipe "${customRecipes[id]?.name || id}"?`)) return;
+  delete customRecipes[id];
+  saveCustomRecipes();
+  renderMyRecipes();
+  updateRecipeCounts();
+}
+
+function exportRecipeJson() {
+  const id = document.getElementById("rb-id").value.trim();
+  const name = document.getElementById("rb-name").value.trim();
+  const desc = document.getElementById("rb-desc").value.trim();
+  const recipe = {
+    id: id || "untitled",
+    name: name || "Untitled Recipe",
+    description: desc,
+    category: document.getElementById("rb-category").value,
+    complexity: document.getElementById("rb-complexity").value,
+    steps: builderSteps.map(s => ({
+      id: s.id, platform: s.platform, role: s.role,
+      label: s.label || s.id, depends_on: s.depends_on || [],
+      shared_vars: (s.shared_vars || []).filter(v => v.key.trim()),
+      notes: s.notes || ""
+    }))
+  };
+  navigator.clipboard.writeText(JSON.stringify(recipe, null, 2)).then(() => {
+    const msg = document.getElementById("rb-msg");
+    if (msg) msg.innerHTML = `<div style="background:#1f6feb20; border:1px solid var(--accent); border-radius:var(--radius); padding:8px 14px; font-size:12px; color:var(--accent);">\ud83d\udccb Recipe JSON copied to clipboard! Use this to submit via the <strong>Contribute</strong> tab.</div>`;
+  });
+}
+
+
+
+
+async function submitRecipe() {
+  const user = document.getElementById("sub-user").value.trim();
+  const token = document.getElementById("sub-token").value.trim();
+  const jsonStr = document.getElementById("sub-recipe-json").value.trim();
+  const out = document.getElementById("submit-recipe-result");
+  if (!user || !token || !jsonStr) { out.innerHTML = '<div style="color:var(--error);">All fields required (username, token, and recipe JSON).</div>'; return; }
+  let recipe;
+  try { recipe = JSON.parse(jsonStr); } catch(e) { out.innerHTML = `<div style="color:var(--error);">Invalid JSON: ${esc(e.message)}</div>`; return; }
+  if (!recipe.id || !recipe.name || !recipe.steps) { out.innerHTML = '<div style="color:var(--error);">Recipe must have id, name, and steps.</div>'; return; }
+  out.innerHTML = '<div style="color:var(--accent);">Submitting recipe...</div>';
+  try {
+    const repo = "JoshuaWink/zero-trust-deploy-config";
+    const branch = "recipe-" + recipe.id + "-" + Date.now();
+    const mainRef = await fetch(`https://api.github.com/repos/${repo}/git/ref/heads/main`, { headers: { Authorization: `token ${token}` } }).then(r => r.json());
+    const sha = mainRef.object.sha;
+    await fetch(`https://api.github.com/repos/${repo}/git/refs`, { method: "POST", headers: { Authorization: `token ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ ref: `refs/heads/${branch}`, sha }) });
+    const fileContent = btoa(unescape(encodeURIComponent(JSON.stringify(recipe, null, 2) + "\n")));
+    await fetch(`https://api.github.com/repos/${repo}/contents/recipes/${recipe.id}.json`, { method: "PUT", headers: { Authorization: `token ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ message: `feat: add recipe ${recipe.id}`, content: fileContent, branch }) });
+    const pr = await fetch(`https://api.github.com/repos/${repo}/pulls`, { method: "POST", headers: { Authorization: `token ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ title: `New Recipe: ${recipe.name}`, body: `Submitted via zero-trust-deploy-config UI.\n\n**Recipe:** ${recipe.name}\n**Steps:** ${recipe.steps.length}\n**Category:** ${recipe.category || "N/A"}`, head: branch, base: "main" }) }).then(r => r.json());
+    out.innerHTML = `<div style="background:#23863620; border:1px solid var(--success); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--success);">\u2705 PR created! <a href="${pr.html_url}" target="_blank" style="color:var(--accent);">${pr.html_url}</a></div>`;
+  } catch(e) {
+    out.innerHTML = `<div style="color:var(--error);">Error: ${esc(e.message)}</div>`;
+  }
+}
+
+
+// ══════════════════════════════════════════════════
+// RECIPE IMPORT — Text / File / Validation
+// ══════════════════════════════════════════════════
+
+const _VALID_CATEGORIES = new Set(["fullstack", "api", "frontend", "data-pipeline", "edge", "microservices"]);
+const _VALID_COMPLEXITIES = new Set(["starter", "intermediate", "advanced"]);
+const _VALID_ROLES = new Set(["build", "ci", "deploy", "secrets", "routing", "monitoring", "storage", "iac", "cdn"]);
+
+function validateRecipeJson(raw) {
+  const errors = [];
+  const warnings = [];
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return { errors: ["Input must be a JSON object, not " + typeof raw], warnings: [] };
+  }
+  // Required fields
+  for (const f of ["id", "name", "description", "category", "steps"]) {
+    if (!(f in raw)) errors.push(`Missing required field: ${f}`);
+  }
+  // ID format
+  const cid = raw.id || "";
+  if (cid && !/^[a-z][a-z0-9-]*$/.test(cid)) {
+    errors.push(`Invalid id format: '${cid}' — must be lowercase kebab-case`);
+  }
+  // Category
+  const cat = raw.category || "";
+  if (cat && !_VALID_CATEGORIES.has(cat)) {
+    errors.push(`Invalid category: '${cat}'`);
+  }
+  // Complexity
+  const cx = raw.complexity || "";
+  if (cx && !_VALID_COMPLEXITIES.has(cx)) {
+    errors.push(`Invalid complexity: '${cx}'`);
+  }
+  // Steps
+  const steps = raw.steps;
+  const knownPlatforms = new Set(Object.keys(contracts));
+  if (steps !== undefined) {
+    if (!Array.isArray(steps)) {
+      errors.push("'steps' must be an array");
+      return { errors, warnings };
+    }
+    if (steps.length === 0) {
+      errors.push("'steps' must not be empty");
+    }
+    const stepIds = new Set();
+    const allIds = new Set(steps.filter(s => s && s.id).map(s => s.id));
+    steps.forEach((step, i) => {
+      const p = `Step ${i + 1}`;
+      if (typeof step !== "object" || step === null) {
+        errors.push(`${p}: must be an object`); return;
+      }
+      for (const sf of ["id", "platform", "role"]) {
+        if (!(sf in step)) errors.push(`${p}: missing '${sf}'`);
+      }
+      if (step.id && stepIds.has(step.id)) {
+        errors.push(`${p}: duplicate step id '${step.id}'`);
+      }
+      if (step.id) stepIds.add(step.id);
+      if (step.role && !_VALID_ROLES.has(step.role)) {
+        errors.push(`${p}: invalid role '${step.role}'`);
+      }
+      // Platform check — warn, don't block
+      if (step.platform && knownPlatforms.size > 0 && !knownPlatforms.has(step.platform)) {
+        warnings.push(`${p}: platform '${step.platform}' is not in the system yet — you can import it as a new contract after loading`);
+      }
+      (step.depends_on || []).forEach(dep => {
+        if (!allIds.has(dep)) errors.push(`${p}: depends_on references '${dep}' which doesn't exist`);
+      });
+      (step.shared_vars || []).forEach((sv, vi) => {
+        if (typeof sv !== "object") return;
+        if (!sv.key || !sv.key.trim()) errors.push(`${p}, var ${vi+1}: key must not be blank`);
+        if (!("description" in sv)) errors.push(`${p}, var ${vi+1}: missing 'description'`);
+      });
+    });
+  }
+  return { errors, warnings };
+}
+
+function importRecipeFromText() {
+  const textarea = document.getElementById("rb-import-text");
+  const msg = document.getElementById("rb-import-msg");
+  const text = (textarea ? textarea.value : "").trim();
+  if (!text) {
+    showImportMsg(msg, "error", "Paste recipe JSON into the text area first.");
+    return;
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (e) {
+    showImportMsg(msg, "error", `Invalid JSON: ${e.message}`);
+    return;
+  }
+  importRecipeData(parsed, msg);
+}
+
+function importRecipeFromFile(event) {
+  const msg = document.getElementById("rb-import-msg");
+  const file = event.target.files[0];
+  if (!file) return;
+  if (!file.name.endsWith(".json")) {
+    showImportMsg(msg, "error", "Please select a .json file.");
+    event.target.value = "";
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    let parsed;
+    try {
+      parsed = JSON.parse(e.target.result);
+    } catch (err) {
+      showImportMsg(msg, "error", `Invalid JSON in file: ${err.message}`);
+      return;
+    }
+    // Also show the JSON in the textarea for visibility
+    document.getElementById("rb-import-text").value = JSON.stringify(parsed, null, 2);
+    importRecipeData(parsed, msg);
+  };
+  reader.onerror = function() {
+    showImportMsg(msg, "error", "Failed to read file.");
+  };
+  reader.readAsText(file);
+  event.target.value = "";  // reset file input
+}
+
+function importRecipeData(parsed, msg) {
+  const result = validateRecipeJson(parsed);
+  if (result.errors.length > 0) {
+    showImportMsg(msg, "error", "Validation errors:<br>" + result.errors.map(e => `• ${esc(e)}`).join("<br>"));
+    return;
+  }
+  // Store warnings for display after successful load
+  const importWarnings = result.warnings;
+  // Populate the builder form
+  document.getElementById("rb-id").value = parsed.id || "";
+  document.getElementById("rb-id").disabled = false;
+  document.getElementById("rb-name").value = parsed.name || "";
+  document.getElementById("rb-desc").value = parsed.description || "";
+  document.getElementById("rb-category").value = parsed.category || "api";
+  document.getElementById("rb-complexity").value = parsed.complexity || "starter";
+
+  // Load steps
+  builderSteps = (parsed.steps || []).map(s => ({
+    id: s.id || "",
+    platform: s.platform || "",
+    role: s.role || "deploy",
+    label: s.label || "",
+    depends_on: s.depends_on || [],
+    shared_vars: (s.shared_vars || []).map(v => ({
+      key: v.key || "",
+      description: v.description || "",
+      required: v.required || false,
+      suggested_backend: v.suggested_backend || "",
+      suggested_path: v.suggested_path || "",
+    })),
+    notes: s.notes || "",
+  }));
+  renderBuilderSteps();
+
+  editingRecipeId = null;
+  document.getElementById("rb-title").textContent = "Build a Recipe (imported)";
+
+  const stepCount = builderSteps.length;
+  const varCount = builderSteps.reduce((n, s) => n + (s.shared_vars ? s.shared_vars.length : 0), 0);
+  showImportMsg(msg, "success",
+    `✅ Imported <strong>${esc(parsed.name)}</strong> — ${stepCount} step${stepCount !== 1 ? "s" : ""}, ${varCount} variable${varCount !== 1 ? "s" : ""}. Review and <strong>Save</strong> when ready.`
+  );
+}
+
+function showImportMsg(el, type, html) {
+  if (!el) return;
+  const colors = {
+    error: { bg: "#f8514920", border: "var(--error)", color: "var(--error)" },
+    success: { bg: "#23863620", border: "var(--success)", color: "var(--success)" },
+    info: { bg: "#1f6feb20", border: "var(--accent)", color: "var(--accent)" },
+  };
+  const c = colors[type] || colors.info;
+  el.innerHTML = `<div style="background:${c.bg}; border:1px solid ${c.border}; border-radius:var(--radius); padding:8px 12px; font-size:12px; color:${c.color}; margin-top:4px;">${html}</div>`;
+}
+
+function toggleImportPanel() {
+  const panel = document.getElementById("rb-import-panel");
+  if (!panel) return;
+  panel.classList.toggle("collapsed");
+  const btn = panel.querySelector("button");
+  if (btn) btn.textContent = panel.classList.contains("collapsed") ? "▶ Expand" : "▼ Collapse";
+}
+
+function clearImport() {
+  const ta = document.getElementById("rb-import-text");
+  const msg = document.getElementById("rb-import-msg");
+  const file = document.getElementById("rb-import-file");
+  if (ta) ta.value = "";
+  if (msg) msg.innerHTML = "";
+  if (file) file.value = "";
+}
+
+
+// ═══════════════════════════════════════════════════════
+// UNKNOWN PLATFORM → CONTRACT SCAFFOLDING
+// ═══════════════════════════════════════════════════════
+const _ROLE_TO_CATEGORY = {
+  build: "container", ci: "ci-cd", deploy: "cloud", secrets: "cloud",
+  routing: "cloud", monitoring: "cloud", storage: "cloud", iac: "cloud", cdn: "edge"
+};
+
+function scaffoldContractFromStep(step) {
+  const pid = step.platform || "unknown";
+  const humanName = pid.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+  const backends = new Set(["env-file"]);
+  (step.shared_vars || []).forEach(v => {
+    if (v.suggested_backend) backends.add(v.suggested_backend);
+  });
+  const requiredVars = (step.shared_vars || []).filter(v => v.required).map(v => ({
+    key: v.key,
+    description: v.description || "",
+    required: true,
+    secret_ref: {
+      backend: v.suggested_backend || "env-file",
+      path: v.suggested_path || v.key.toLowerCase(),
+      version: null
+    }
+  }));
+  const optionalVars = (step.shared_vars || []).filter(v => !v.required).map(v => ({
+    key: v.key,
+    description: v.description || "",
+    required: false,
+    secret_ref: {
+      backend: v.suggested_backend || "env-file",
+      path: v.suggested_path || v.key.toLowerCase(),
+      version: null
+    }
+  }));
+
+  return {
+    id: pid,
+    name: humanName,
+    category: _ROLE_TO_CATEGORY[step.role] || "cloud",
+    secret_backends: Array.from(backends),
+    required_vars: requiredVars,
+    optional_vars: optionalVars,
+    export_formats: ["env", "json", "yaml"],
+    notes: `Scaffolded from recipe step: ${step.label || step.id}`
+  };
+}
+
+function importAsContract(stepIdx) {
+  const step = builderSteps[stepIdx];
+  if (!step || !step.platform) return;
+  if (contracts[step.platform]) {
+    alert(`"${step.platform}" is already a known contract.`);
+    return;
+  }
+  const contract = scaffoldContractFromStep(step);
+
+  // Register in-memory so profile generation works immediately
+  contracts[step.platform] = contract;
+
+  // Re-render builder to remove the warning badge
+  renderBuilderSteps();
+
+  // Show confirmation
+  const msg = document.getElementById("rb-msg");
+  if (msg) {
+    showImportMsg(msg, "success",
+      `✅ <strong>${esc(contract.name)}</strong> imported as a local contract (${contract.secret_backends.join(", ")} backends, ${contract.required_vars.length + contract.optional_vars.length} vars). Profile generation will now include this platform.`
+    );
+  }
+
+  // Also refresh overview/profiles in case they're watching contracts
+  refreshAll();
+}
+
+
+
+// ══════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════════════
+   DEMO PROFILES
+   ══════════════════════════════════════════════════════════════════════ */
+const DEMOS = {
+  "saas-api-prod": {
+    id: "saas-api-prod", name: "SaaS API — Production", platform: "kubernetes", environment: "production",
+    vars: [
+      { key: "DATABASE_URL", secret_ref: { backend: "hashicorp-vault", path: "secret/prod/postgres-url", version: null }, description: "Primary Postgres connection", required: true },
+      { key: "REDIS_URL", secret_ref: { backend: "hashicorp-vault", path: "secret/prod/redis-url", version: null }, description: "Redis cache", required: true },
+      { key: "JWT_SECRET", secret_ref: { backend: "hashicorp-vault", path: "secret/prod/jwt-key", version: null }, description: "JWT signing key", required: true },
+      { key: "STRIPE_SECRET_KEY", secret_ref: { backend: "hashicorp-vault", path: "secret/prod/stripe-sk", version: null }, description: "Stripe API key", required: true },
+      { key: "SENDGRID_API_KEY", secret_ref: { backend: "hashicorp-vault", path: "secret/prod/sendgrid", version: null }, description: "Email API key", required: true },
+      { key: "S3_BUCKET", secret_ref: { backend: "aws-secrets-manager", path: "prod/s3-bucket", version: null }, description: "Upload bucket", required: false },
+      { key: "LOG_LEVEL", secret_ref: { backend: "k8s-secret", path: "prod-config/log-level", version: null }, description: "Log level", required: false },
+      { key: "CORS_ORIGINS", secret_ref: { backend: "k8s-secret", path: "prod-config/cors", version: null }, description: "CORS origins", required: false },
+    ], metadata: { demo: true },
+  },
+  "startup-frontend": {
+    id: "startup-frontend", name: "Startup Frontend — Vercel", platform: "vercel", environment: "production",
+    vars: [
+      { key: "NEXT_PUBLIC_API_URL", secret_ref: { backend: "vercel-secrets", path: "api-url-prod", version: null }, description: "Public API endpoint", required: true },
+      { key: "NEXT_PUBLIC_STRIPE_PK", secret_ref: { backend: "vercel-secrets", path: "stripe-pk", version: null }, description: "Stripe publishable key", required: true },
+      { key: "DATABASE_URL", secret_ref: { backend: "vercel-secrets", path: "neon-db-prod", version: null }, description: "Neon Postgres", required: true },
+      { key: "AUTH_SECRET", secret_ref: { backend: "vercel-secrets", path: "nextauth-secret", version: null }, description: "NextAuth encryption", required: true },
+      { key: "RESEND_API_KEY", secret_ref: { backend: "vercel-secrets", path: "resend-key", version: null }, description: "Email service", required: false },
+    ], metadata: { demo: true },
+  },
+  "ecs-worker": {
+    id: "ecs-worker", name: "Data Pipeline — ECS", platform: "aws-ecs", environment: "production",
+    vars: [
+      { key: "SQS_QUEUE_URL", secret_ref: { backend: "aws-ssm", path: "/prod/worker/sqs-url", version: null }, description: "SQS queue", required: true },
+      { key: "DATABASE_URL", secret_ref: { backend: "aws-secrets-manager", path: "prod/worker/db", version: null }, description: "RDS Postgres", required: true },
+      { key: "S3_OUTPUT_BUCKET", secret_ref: { backend: "aws-ssm", path: "/prod/worker/s3-out", version: null }, description: "Output bucket", required: true },
+      { key: "DATADOG_API_KEY", secret_ref: { backend: "aws-secrets-manager", path: "prod/datadog", version: null }, description: "Monitoring key", required: true },
+      { key: "WORKER_CONCURRENCY", secret_ref: { backend: "aws-ssm", path: "/prod/worker/concurrency", version: null }, description: "Thread count", required: false },
+      { key: "AWS_DEFAULT_REGION", secret_ref: { backend: "aws-ssm", path: "/prod/region", version: null }, description: "AWS region", required: false },
+    ], metadata: { demo: true },
+  },
+  "broken-deploy": {
+    id: "broken-deploy", name: "⚠️ Broken Deploy (Errors)", platform: "github-actions", environment: "staging",
+    vars: [
+      { key: "GITHUB_INTERNAL_TOKEN", secret_ref: { backend: "github-secrets", path: "internal-token", version: null }, description: "❌ Reserved GITHUB_ prefix", required: true },
+      { key: "db url", secret_ref: { backend: "github-secrets", path: "db-url", version: null }, description: "❌ Spaces in key name", required: true },
+      { key: "API_KEY", secret_ref: { backend: "hashicorp-vault", path: "staging/api-key", version: null }, description: "❌ Vault not supported", required: true },
+      { key: "VALID_SECRET", secret_ref: { backend: "github-secrets", path: "some-secret", version: null }, description: "✅ This one is fine", required: false },
+      { key: "API_KEY", secret_ref: { backend: "github-secrets", path: "duplicate", version: null }, description: "❌ Duplicate key", required: false },
+    ], metadata: { demo: true },
+  },
+  "heroku-api": {
+    id: "heroku-api", name: "Heroku API — PaaS", platform: "heroku", environment: "production",
+    vars: [
+      { key: "DATABASE_URL", secret_ref: { backend: "heroku-config", path: "DATABASE_URL", version: null }, description: "Heroku Postgres addon", required: true },
+      { key: "REDIS_URL", secret_ref: { backend: "heroku-config", path: "REDIS_URL", version: null }, description: "Heroku Redis addon", required: true },
+      { key: "SECRET_KEY_BASE", secret_ref: { backend: "doppler", path: "prod/secret-key", version: null }, description: "Application secret", required: true },
+      { key: "SENDGRID_API_KEY", secret_ref: { backend: "doppler", path: "prod/sendgrid", version: null }, description: "Email service", required: true },
+      { key: "LOG_LEVEL", secret_ref: { backend: "heroku-config", path: "LOG_LEVEL", version: null }, description: "Log verbosity", required: false },
+      { key: "PORT", secret_ref: { backend: "heroku-config", path: "PORT", version: null }, description: "Auto-set by Heroku", required: false },
+    ], metadata: { demo: true },
+  },
+  "edge-worker": {
+    id: "edge-worker", name: "Edge Worker — Cloudflare", platform: "cloudflare-workers", environment: "production",
+    vars: [
+      { key: "API_TOKEN", secret_ref: { backend: "cloudflare-secrets", path: "api-token", version: null }, description: "Auth token for upstream API", required: true },
+      { key: "KV_NAMESPACE_ID", secret_ref: { backend: "cloudflare-secrets", path: "kv-ns-id", version: null }, description: "Workers KV namespace", required: true },
+      { key: "ENVIRONMENT", secret_ref: { backend: "cloudflare-secrets", path: "env", version: null }, description: "Deployment environment", required: false },
+      { key: "RATE_LIMIT", secret_ref: { backend: "cloudflare-secrets", path: "rate-limit", version: null }, description: "Requests per minute", required: false },
+    ], metadata: { demo: true },
+  },
+  "cloud-run-api": {
+    id: "cloud-run-api", name: "Cloud Run API — GCP", platform: "google-cloud-run", environment: "production",
+    vars: [
+      { key: "DATABASE_URL", secret_ref: { backend: "gcp-secret-manager", path: "projects/myproj/secrets/db-url/versions/latest", version: null }, description: "Cloud SQL Postgres", required: true },
+      { key: "REDIS_HOST", secret_ref: { backend: "gcp-secret-manager", path: "projects/myproj/secrets/redis-host/versions/latest", version: null }, description: "Memorystore Redis", required: true },
+      { key: "GCS_BUCKET", secret_ref: { backend: "gcp-secret-manager", path: "projects/myproj/secrets/gcs-bucket/versions/latest", version: null }, description: "GCS upload bucket", required: true },
+      { key: "JWT_SECRET", secret_ref: { backend: "gcp-secret-manager", path: "projects/myproj/secrets/jwt-key/versions/latest", version: null }, description: "JWT signing key", required: true },
+      { key: "LOG_LEVEL", secret_ref: { backend: "gcp-secret-manager", path: "projects/myproj/secrets/log-level/versions/latest", version: null }, description: "Log verbosity", required: false },
+      { key: "CORS_ORIGINS", secret_ref: { backend: "gcp-secret-manager", path: "projects/myproj/secrets/cors/versions/latest", version: null }, description: "CORS allowlist", required: false },
+    ], metadata: { demo: true },
+  },
+};
+
+function loadDemos() {
+  let n = 0;
+  for (const [id, p] of Object.entries(DEMOS)) { if (!profiles[id]) { profiles[id] = JSON.parse(JSON.stringify(p)); n++; } }
+  saveProfiles();
+  const msg = document.getElementById("demo-msg");
+  msg.style.display = "block";
+  if (n > 0) {
+    msg.innerHTML = `<div style="background:#23863620; border:1px solid var(--success); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--success);">
+      ✅ Loaded ${n} demo profile${n>1?"s":""}! Select one above to see it in action.</div>`;
+    // Auto-select first demo
+    const sel = document.getElementById("ov-profile");
+    if (sel) { sel.value = "saas-api-prod"; renderOverview(); }
+  } else {
+    msg.innerHTML = `<div style="background:#1f6feb20; border:1px solid var(--accent); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--accent);">
+      Demos already loaded. Clear first to reload.</div>`;
+  }
+}
+
+function clearDemos() {
+  let n = 0;
+  for (const id of Object.keys(DEMOS)) { if (profiles[id]) { delete profiles[id]; n++; } }
+  saveProfiles();
+  const msg = document.getElementById("demo-msg");
+  if (n > 0) {
+    msg.style.display = "block";
+    msg.innerHTML = `<div style="background:#9e6a0320; border:1px solid var(--warn); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--warn);">
+      🗑 Removed ${n} demo${n>1?"s":""}. Custom profiles untouched.</div>`;
+    setTimeout(() => { msg.style.display = "none"; }, 3000);
+  }
+}
+function esc(s) {
+  if (s == null) return "";
+  const d = document.createElement("div"); d.textContent = String(s); return d.innerHTML;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CLIENT-SIDE ENCRYPTION — Web Crypto AES-GCM + PBKDF2
+// ═══════════════════════════════════════════════════════════════
+
+let _sessionKey = null;       // CryptoKey cached in memory (session only)
+let _encryptionEnabled = false;
+const ENCRYPTED_PREFIX = "ztdc_enc:";  // Marker prefix for encrypted values
+
+async function deriveKeyFromPassphrase(passphrase, salt) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw", enc.encode(passphrase), "PBKDF2", false, ["deriveKey"]
+  );
+  return crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
+
+async function encryptData(data, key) {
+  const enc = new TextEncoder();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const plaintext = enc.encode(JSON.stringify(data));
+  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plaintext);
+  // Pack: salt(16) + iv(12) + ciphertext
+  const packed = new Uint8Array(salt.length + iv.length + new Uint8Array(ciphertext).length);
+  packed.set(salt, 0);
+  packed.set(iv, salt.length);
+  packed.set(new Uint8Array(ciphertext), salt.length + iv.length);
+  return ENCRYPTED_PREFIX + btoa(String.fromCharCode(...packed));
+}
+
+async function decryptData(encrypted, key) {
+  if (!encrypted.startsWith(ENCRYPTED_PREFIX)) {
+    // Not encrypted — return as plain JSON parse
+    return JSON.parse(encrypted);
+  }
+  const raw = encrypted.slice(ENCRYPTED_PREFIX.length);
+  const bytes = Uint8Array.from(atob(raw), c => c.charCodeAt(0));
+  const iv = bytes.slice(16, 28);
+  const ciphertext = bytes.slice(28);
+  const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
+  return JSON.parse(new TextDecoder().decode(decrypted));
+}
+
+// ── Secure Storage Wrappers ──
+
+async function secureSetItem(storageKey, data) {
+  if (_encryptionEnabled && _sessionKey) {
+    const encrypted = await encryptData(data, _sessionKey);
+    localStorage.setItem(storageKey, encrypted);
+  } else {
+    localStorage.setItem(storageKey, JSON.stringify(data));
+  }
+}
+
+async function secureGetItem(storageKey) {
+  const raw = localStorage.getItem(storageKey);
+  if (!raw) return null;
+  if (_encryptionEnabled && _sessionKey && raw.startsWith(ENCRYPTED_PREFIX)) {
+    try {
+      return await decryptData(raw, _sessionKey);
+    } catch (e) {
+      console.warn("Decryption failed for", storageKey, "— data may use a different passphrase.");
+      return null;
+    }
+  }
+  // Plain JSON fallback
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+// ── Override save/load functions to use encryption ──
+
+const _origSaveProfiles = typeof saveProfiles === "function" ? saveProfiles : null;
+const _origLoadProfiles = typeof loadProfiles === "function" ? loadProfiles : null;
+const _origSaveCustomRecipes = typeof saveCustomRecipes === "function" ? saveCustomRecipes : null;
+const _origLoadCustomRecipes = typeof loadCustomRecipes === "function" ? loadCustomRecipes : null;
+
+async function saveProfilesSecure() {
+  await secureSetItem(STORAGE_KEY, profiles);
+}
+
+async function loadProfilesSecure() {
+  const data = await secureGetItem(STORAGE_KEY);
+  profiles = data || {};
+}
+
+async function saveCustomRecipesSecure() {
+  await secureSetItem(CUSTOM_RECIPES_KEY, customRecipes);
+}
+
+async function loadCustomRecipesSecure() {
+  const data = await secureGetItem(CUSTOM_RECIPES_KEY);
+  customRecipes = data || {};
+}
+
+// Replace sync functions with async wrappers when encryption is enabled
+function enableEncryptedStorage() {
+  saveProfiles = function() { saveProfilesSecure(); };
+  loadProfiles = function() { loadProfilesSecure().then(() => refreshAll()); };
+  saveCustomRecipes = function() { saveCustomRecipesSecure(); };
+  loadCustomRecipes = function() { loadCustomRecipesSecure().then(() => { renderMyRecipes(); }); };
+}
+
+// ── Passphrase Modal ──
+
+function showSecurityModal(mode) {
+  // mode: 'setup' | 'unlock' | 'change'
+  const existing = document.getElementById("passphrase-modal");
+  if (existing) existing.remove();
+
+  const isSetup = mode === "setup";
+  const isChange = mode === "change";
+  const isUnlock = mode === "unlock";
+
+  const title = isSetup ? "🔐 Secure Your Data" : isChange ? "🔑 Change Security" : "🔓 Unlock Your Data";
+
+  const modal = document.createElement("div");
+  modal.id = "passphrase-modal";
+
+  // Check what method was previously used
+  const prevMethod = localStorage.getItem("ztdc_auth_method") || "";  // 'passphrase' | 'github' | 'google' | 'microsoft'
+  const showOAuthTab = isSetup || (isUnlock && prevMethod && prevMethod !== "passphrase");
+  const showPassTab = isSetup || isChange || (isUnlock && (!prevMethod || prevMethod === "passphrase"));
+  const defaultTab = (isUnlock && prevMethod && prevMethod !== "passphrase") ? "oauth" : "passphrase";
+
+  modal.innerHTML = `
+    <div class="modal-box" style="max-width:440px;">
+      <h3>${title}</h3>
+      <p class="muted" style="font-size:12px; margin-bottom:12px;">
+        ${isSetup ? "Choose how to protect your deployment configs. Your data never leaves your browser." :
+          isUnlock ? "Sign in to decrypt your saved data." :
+          "Update your security settings."}
+      </p>
+
+      ${(showOAuthTab && showPassTab) ? `
+      <div class="security-method-tabs">
+        <button id="tab-oauth" class="${defaultTab === 'oauth' ? 'active' : ''}" onclick="switchSecurityTab('oauth')">🔑 Sign In</button>
+        <button id="tab-passphrase" class="${defaultTab === 'passphrase' ? 'active' : ''}" onclick="switchSecurityTab('passphrase')">🔒 Passphrase</button>
+      </div>` : ''}
+
+      <!-- OAuth Tab -->
+      <div id="security-tab-oauth" style="display:${defaultTab === 'oauth' || !showPassTab ? 'block' : 'none'};">
+        <div class="oauth-buttons">
+          <button class="oauth-btn" onclick="startOAuthFlow('github')" id="oauth-github-btn">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+            <span class="provider-name">Continue with GitHub</span>
+            <span class="status-tag" id="gh-status-tag" style="background:var(--success); color:#000;">ready</span>
+          </button>
+          <button class="oauth-btn" onclick="startOAuthFlow('google')" id="oauth-google-btn">
+            <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+            <span class="provider-name">Continue with Google</span>
+            <span class="status-tag" id="google-status-tag" style="background:var(--warn,#d29920); color:#000;">config needed</span>
+          </button>
+          <button class="oauth-btn" onclick="startOAuthFlow('microsoft')" id="oauth-microsoft-btn">
+            <svg viewBox="0 0 24 24"><rect x="1" y="1" width="10" height="10" fill="#F25022"/><rect x="13" y="1" width="10" height="10" fill="#7FBA00"/><rect x="1" y="13" width="10" height="10" fill="#00A4EF"/><rect x="13" y="13" width="10" height="10" fill="#FFB900"/></svg>
+            <span class="provider-name">Continue with Microsoft</span>
+            <span class="status-tag" style="background:var(--warn,#d29920); color:#000;">config needed</span>
+          </button>
+        </div>
+        <p class="muted" style="font-size:10px; text-align:center; margin:4px 0 0 0;">
+          Passwordless — your identity is your encryption key. No passwords to remember.
+        </p>
+        <div id="oauth-error" style="color:var(--error); font-size:11px; min-height:16px; margin-top:4px;"></div>
+      </div>
+
+      <!-- Passphrase Tab -->
+      <div id="security-tab-passphrase" style="display:${defaultTab === 'passphrase' || !showOAuthTab ? 'block' : 'none'};">
+        ${isChange ? '<div><label style="font-size:11px;">Current Passphrase</label><input id="pp-current" type="password" placeholder="Current passphrase"></div>' : ''}
+        <div><label style="font-size:11px;">${isChange ? 'New Passphrase' : 'Passphrase'}</label><input id="pp-input" type="password" placeholder="Enter passphrase (min 6 characters)"></div>
+        ${isSetup || isChange ? '<div><label style="font-size:11px;">Confirm</label><input id="pp-confirm" type="password" placeholder="Confirm passphrase"></div>' : ''}
+        <div id="pp-error" style="color:var(--error); font-size:11px; min-height:16px;"></div>
+        <div class="modal-actions">
+          <button class="btn" onclick="handlePassphrase('${mode}')">${isSetup ? 'Enable Encryption' : isChange ? 'Change Passphrase' : 'Unlock'}</button>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="margin-top:8px; border-top:1px solid var(--border); padding-top:8px;">
+        ${isSetup ? '<button class="btn btn-sec" onclick="closeSecurityModal()">Skip (No Encryption)</button>' : ''}
+        ${isChange ? '<button class="btn btn-sec" onclick="closeSecurityModal()">Cancel</button>' : ''}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  // Focus appropriate input
+  setTimeout(() => {
+    if (defaultTab === "passphrase") {
+      const inp = document.getElementById(isChange ? "pp-current" : "pp-input");
+      if (inp) inp.focus();
+    }
+  }, 100);
+
+  // Enter key for passphrase tab
+  modal.addEventListener("keydown", e => {
+    if (e.key === "Enter" && document.getElementById("security-tab-passphrase").style.display !== "none") {
+      handlePassphrase(mode);
+    }
+  });
+}
+
+// Keep backward compatibility
+function showPassphraseModal(mode) { showSecurityModal(mode); }
+
+function switchSecurityTab(tab) {
+  const oauthTab = document.getElementById("security-tab-oauth");
+  const passTab = document.getElementById("security-tab-passphrase");
+  const oauthBtn = document.getElementById("tab-oauth");
+  const passBtn = document.getElementById("tab-passphrase");
+
+  if (tab === "oauth") {
+    if (oauthTab) oauthTab.style.display = "block";
+    if (passTab) passTab.style.display = "none";
+    if (oauthBtn) oauthBtn.classList.add("active");
+    if (passBtn) passBtn.classList.remove("active");
+  } else {
+    if (oauthTab) oauthTab.style.display = "none";
+    if (passTab) passTab.style.display = "block";
+    if (oauthBtn) oauthBtn.classList.remove("active");
+    if (passBtn) passBtn.classList.add("active");
+    setTimeout(() => {
+      const inp = document.getElementById("pp-input");
+      if (inp) inp.focus();
+    }, 50);
+  }
+}
+
+function closeSecurityModal() {
+  const m = document.getElementById("passphrase-modal");
+  if (m) m.remove();
+}
+function closePassphraseModal() { closeSecurityModal(); }
+
+
+async function handlePassphrase(mode) {
+  const errEl = document.getElementById("pp-error");
+  const input = document.getElementById("pp-input");
+  const confirm = document.getElementById("pp-confirm");
+  const passphrase = (input ? input.value : "").trim();
+
+  if (passphrase.length < 6) {
+    if (errEl) errEl.textContent = "Passphrase must be at least 6 characters.";
+    return;
+  }
+
+  if (mode === "setup" || mode === "change") {
+    const conf = (confirm ? confirm.value : "").trim();
+    if (passphrase !== conf) {
+      if (errEl) errEl.textContent = "Passphrases don't match.";
+      return;
+    }
+  }
+
+  if (mode === "change") {
+    const current = (document.getElementById("pp-current") || {}).value || "";
+    // Verify current passphrase by trying to decrypt existing data
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw && raw.startsWith(ENCRYPTED_PREFIX)) {
+      try {
+        const salt = Uint8Array.from(atob(raw.slice(ENCRYPTED_PREFIX.length)), c => c.charCodeAt(0)).slice(0, 16);
+        const oldKey = await deriveKeyFromPassphrase(current, salt);
+        await decryptData(raw, oldKey);
+      } catch {
+        if (errEl) errEl.textContent = "Current passphrase is incorrect.";
+        return;
+      }
+    }
+  }
+
+  try {
+    // Derive key from passphrase with a fixed app salt for key derivation
+    const appSalt = new TextEncoder().encode("ztdc-encryption-v1");
+    _sessionKey = await deriveKeyFromPassphrase(passphrase, appSalt);
+    _encryptionEnabled = true;
+
+    // If there's existing unencrypted data, re-encrypt it
+    const existingProfiles = localStorage.getItem(STORAGE_KEY);
+    const existingRecipes = localStorage.getItem(CUSTOM_RECIPES_KEY);
+
+    if (existingProfiles && !existingProfiles.startsWith(ENCRYPTED_PREFIX)) {
+      try {
+        profiles = JSON.parse(existingProfiles);
+        await saveProfilesSecure();
+      } catch {}
+    }
+    if (existingRecipes && !existingRecipes.startsWith(ENCRYPTED_PREFIX)) {
+      try {
+        customRecipes = JSON.parse(existingRecipes);
+        await saveCustomRecipesSecure();
+      } catch {}
+    }
+
+    // Mark that encryption is enabled
+    localStorage.setItem("ztdc_encrypted", "true");
+    localStorage.setItem("ztdc_auth_method", "passphrase");
+    localStorage.setItem("ztdc_enc_check", await encryptData({check: true}, _sessionKey));
+
+    enableEncryptedStorage();
+    updateSecurityBar(true);
+    closePassphraseModal();
+
+    // Reload data with decryption
+    await loadProfilesSecure();
+    await loadCustomRecipesSecure();
+    refreshAll();
+  } catch (e) {
+    if (errEl) errEl.textContent = "Error: " + e.message;
+  }
+}
+
+async function unlockWithPassphrase(passphrase) {
+  const appSalt = new TextEncoder().encode("ztdc-encryption-v1");
+  _sessionKey = await deriveKeyFromPassphrase(passphrase, appSalt);
+
+  // Verify against check token
+  const check = localStorage.getItem("ztdc_enc_check");
+  if (check) {
+    try {
+      await decryptData(check, _sessionKey);
+    } catch {
+      _sessionKey = null;
+      throw new Error("Wrong passphrase");
+    }
+  }
+
+  _encryptionEnabled = true;
+  enableEncryptedStorage();
+  updateSecurityBar(true);
+
+  await loadProfilesSecure();
+  await loadCustomRecipesSecure();
+  refreshAll();
+}
+
+function updateSecurityBar(encrypted) {
+  const bar = document.getElementById("security-bar");
+  const icon = document.getElementById("security-icon");
+  const label = document.getElementById("security-label");
+  if (!bar) return;
+
+  if (encrypted) {
+    bar.className = "security-bar locked";
+    icon.textContent = "🔒";
+    label.textContent = "Data encrypted with your passphrase";
+    bar.querySelector("button").textContent = "Change Passphrase";
+    bar.querySelector("button").onclick = () => showPassphraseModal("change");
+  } else {
+    bar.className = "security-bar unlocked";
+    icon.textContent = "🔓";
+    label.textContent = "Data unencrypted — stored in plain text";
+    bar.querySelector("button").textContent = "Set Passphrase";
+    bar.querySelector("button").onclick = () => showPassphraseModal("setup");
+  }
+}
+
+// ── Boot: check if encryption was previously enabled ──
+
+// ═══════════════════════════════════════════════════════════════
+// OAUTH SIGN-IN — Passwordless encryption via OAuth identity
+// ═══════════════════════════════════════════════════════════════
+
+// OAuth client configs — GitHub works immediately with PAT flow
+// Google and Microsoft need registered OAuth client_ids
+// ═══════════════════════════════════════════════════════════════
+// OAUTH CONFIGURATION
+// ═══════════════════════════════════════════════════════════════
+//
+// To enable each provider, register an OAuth app and fill in the clientId.
+// See: https://joshuawink.github.io/zero-trust-deploy-config/#setup
+//
+// GitHub:    github.com/settings/developers → OAuth App
+//            Callback URL: https://joshuawink.github.io/zero-trust-deploy-config/callback.html
+//
+// Google:    console.cloud.google.com → APIs & Services → Credentials → OAuth Client
+//            Authorized JS origins: https://joshuawink.github.io
+//
+// Microsoft: portal.azure.com → App registrations → New → SPA redirect URI
+//            Redirect URI: https://joshuawink.github.io/zero-trust-deploy-config/callback.html
+
+const OAUTH_CONFIG = {
+  github: {
+    clientId: "Ov23li9hz28NBeUUDZCr",
+    workerUrl: "https://ztdc-github-oauth.orchie.workers.dev",
+    label: "GitHub",
+    get ready() { return !!(this.clientId && this.workerUrl); },
+  },
+  google: {
+    clientId: "",  // e.g. "123456789.apps.googleusercontent.com"
+    label: "Google",
+    get ready() { return !!this.clientId; },
+  },
+  microsoft: {
+    clientId: "",  // e.g. "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    tenantId: "common",  // "common" for multi-tenant, or specific tenant
+    label: "Microsoft",
+    get ready() { return !!this.clientId; },
+  },
+};
+
+const CALLBACK_URL = new URL("callback.html", window.location.href).href;
+
+// ═══════════════════════════════════════════════════════════════
+// PKCE HELPERS — Pure Web Crypto
+// ═══════════════════════════════════════════════════════════════
+
+function base64url(buffer) {
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function generateCodeVerifier() {
+  return base64url(crypto.getRandomValues(new Uint8Array(32)));
+}
+
+async function generateCodeChallenge(verifier) {
+  const encoded = new TextEncoder().encode(verifier);
+  const hash = await crypto.subtle.digest("SHA-256", encoded);
+  return base64url(hash);
+}
+
+function generateState() {
+  return base64url(crypto.getRandomValues(new Uint8Array(16)));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// KEY DERIVATION — provider + sub → AES-256 key
+// ═══════════════════════════════════════════════════════════════
+
+async function deriveKeyFromOAuth(provider, sub) {
+  const enc = new TextEncoder();
+  const salt = enc.encode(`ztdc-oauth-v1:${provider}`);
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw", enc.encode(sub), "PBKDF2", false, ["deriveKey"]
+  );
+  return crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SHARED OAUTH COMPLETION — after getting provider + sub
+// ═══════════════════════════════════════════════════════════════
+
+async function completeOAuthEncryption(provider, sub, displayInfo) {
+  _sessionKey = await deriveKeyFromOAuth(provider, sub);
+  _encryptionEnabled = true;
+
+  // Migrate existing plaintext data
+  const existingProfiles = localStorage.getItem(STORAGE_KEY);
+  const existingRecipes = localStorage.getItem(CUSTOM_RECIPES_KEY);
+
+  if (existingProfiles && !existingProfiles.startsWith(ENCRYPTED_PREFIX)) {
+    try { profiles = JSON.parse(existingProfiles); await saveProfilesSecure(); } catch {}
+  }
+  if (existingRecipes && !existingRecipes.startsWith(ENCRYPTED_PREFIX)) {
+    try { customRecipes = JSON.parse(existingRecipes); await saveCustomRecipesSecure(); } catch {}
+  }
+
+  localStorage.setItem("ztdc_encrypted", "true");
+  localStorage.setItem("ztdc_auth_method", provider);
+  localStorage.setItem("ztdc_auth_display", JSON.stringify(displayInfo));
+  localStorage.setItem("ztdc_enc_check", await encryptData({check: true}, _sessionKey));
+
+  enableEncryptedStorage();
+  updateSecurityBar(true, provider, displayInfo);
+  closeSecurityModal();
+
+  await loadProfilesSecure();
+  await loadCustomRecipesSecure();
+  refreshAll();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// OAUTH FLOW ROUTER
+// ═══════════════════════════════════════════════════════════════════
+
+async function startOAuthFlow(provider) {
+  const errEl = document.getElementById("oauth-error");
+  if (errEl) errEl.textContent = "";
+
+  if (provider === "github") {
+    if (!OAUTH_CONFIG.github.ready) {
+      showGitHubPATFallback(errEl);
+      return;
+    }
+    await startGitHubPopupFlow();
+  } else if (provider === "google") {
+    if (!OAUTH_CONFIG.google.clientId) {
+      if (errEl) errEl.innerHTML = 'Google OAuth requires a client ID. <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:var(--accent);">Register one here</a>, then set <code>OAUTH_CONFIG.google.clientId</code>.';
+      return;
+    }
+    await startGoogleFlow();
+  } else if (provider === "microsoft") {
+    if (!OAUTH_CONFIG.microsoft.clientId) {
+      if (errEl) errEl.innerHTML = 'Microsoft OAuth requires a client ID. <a href="https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps" target="_blank" style="color:var(--accent);">Register one here</a>, then set <code>OAUTH_CONFIG.microsoft.clientId</code>.';
+      return;
+    }
+    await startMicrosoftFlow();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// GITHUB — Popup Redirect Flow (via Cloudflare Worker proxy)
+// ═══════════════════════════════════════════════════════════════════
+//
+// Flow: User clicks → popup opens github.com/login/oauth/authorize
+//       → user authorizes → redirect to callback.html?code=xxx
+//       → callback.html postMessages code to parent window
+//       → parent sends code to CF Worker (which adds client_secret server-side)
+//       → Worker returns { user_id, login, name, avatar_url }
+//       → we derive encryption key from user_id
+//
+// The client_secret NEVER touches the browser. The access_token NEVER
+// touches the browser. Only the stable numeric user ID comes back.
+
+async function startGitHubPopupFlow() {
+  const errEl = document.getElementById("oauth-error");
+  const btn = document.getElementById("oauth-github-btn");
+  if (btn) btn.disabled = true;
+
+  const clientId = OAUTH_CONFIG.github.clientId;
+  const state = generateState();
+
+  // Store state for CSRF verification
+  sessionStorage.setItem("ztdc_gh_oauth_state", state);
+
+  try {
+    // Step 1: Open popup to GitHub authorize
+    const authUrl = new URL("https://github.com/login/oauth/authorize");
+    authUrl.searchParams.set("client_id", clientId);
+    authUrl.searchParams.set("redirect_uri", CALLBACK_URL);
+    authUrl.searchParams.set("scope", "read:user");
+    authUrl.searchParams.set("state", state);
+
+    const popup = window.open(authUrl.toString(), "github-oauth", "width=500,height=700,popup=yes");
+
+    if (!popup || popup.closed) {
+      throw new Error("Popup blocked — please allow popups for this site.");
+    }
+
+    if (errEl) errEl.innerHTML = '<span style="color:var(--accent);">⏳ Waiting for GitHub authorization...</span>';
+
+    // Step 2: Listen for postMessage from callback.html
+    const code = await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        window.removeEventListener("message", handler);
+        reject(new Error("Authorization timed out (2 minutes). Please try again."));
+      }, 120000);
+
+      function handler(event) {
+        // Accept messages from our own origin (callback.html)
+        if (event.origin !== window.location.origin) return;
+
+        if (event.data && event.data.type === "ztdc-oauth-code") {
+          clearTimeout(timeout);
+          window.removeEventListener("message", handler);
+          if (popup && !popup.closed) popup.close();
+
+          // Verify state
+          if (event.data.state !== sessionStorage.getItem("ztdc_gh_oauth_state")) {
+            reject(new Error("OAuth state mismatch — possible CSRF. Please try again."));
+            return;
+          }
+          sessionStorage.removeItem("ztdc_gh_oauth_state");
+          resolve(event.data.code);
+        }
+
+        if (event.data && event.data.type === "ztdc-oauth-error") {
+          clearTimeout(timeout);
+          window.removeEventListener("message", handler);
+          if (popup && !popup.closed) popup.close();
+          reject(new Error(event.data.error || "Authorization denied"));
+        }
+      }
+
+      window.addEventListener("message", handler);
+    });
+
+    // Step 3: Exchange code via Cloudflare Worker (secret stays server-side)
+    if (errEl) errEl.innerHTML = '<span style="color:var(--accent);">⏳ Verifying your identity...</span>';
+
+    const workerResp = await fetch(OAUTH_CONFIG.github.workerUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+
+    const userData = await workerResp.json();
+
+    if (!workerResp.ok || userData.error) {
+      throw new Error(userData.error_description || userData.error || `Worker returned ${workerResp.status}`);
+    }
+
+    // Step 4: Derive key and encrypt
+    await completeOAuthEncryption("github", String(userData.user_id), {
+      username: userData.login,
+      avatarUrl: userData.avatar_url,
+      name: userData.name || userData.login,
+    });
+
+  } catch (e) {
+    if (errEl) errEl.textContent = `GitHub auth failed: ${e.message}`;
+  } finally {
+    if (btn) btn.disabled = false;
+    sessionStorage.removeItem("ztdc_gh_oauth_state");
+  }
+}
+
+
+// ── GitHub PAT Fallback (when no OAuth App configured) ──
+
+function showGitHubPATFallback(errEl) {
+  const oauthDiv = document.getElementById("security-tab-oauth");
+  if (!document.getElementById("gh-token-input") && oauthDiv) {
+    const inputHtml = `
+      <div id="gh-token-input" style="margin-top:8px; padding:10px; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius);">
+        <label style="font-size:11px; display:block; margin-bottom:4px;">GitHub Personal Access Token</label>
+        <input id="gh-oauth-token" type="password" placeholder="ghp_xxxxxxxxxxxx" style="width:100%; margin-bottom:4px;" autocomplete="off">
+        <p class="muted" style="font-size:10px; margin:0;">
+          🔒 Used once to verify your identity — <strong>never stored</strong>.
+          <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--accent);">Create token</a> (no scopes needed — just read:user).
+        </p>
+        <button class="btn" style="margin-top:8px; width:100%;" onclick="completePATFlow()">Verify & Encrypt</button>
+      </div>
+    `;
+    const div = document.createElement("div");
+    div.innerHTML = inputHtml;
+    oauthDiv.appendChild(div.firstElementChild);
+    setTimeout(() => { const inp = document.getElementById("gh-oauth-token"); if (inp) inp.focus(); }, 50);
+  }
+}
+
+async function completePATFlow() {
+  const errEl = document.getElementById("oauth-error");
+  const token = (document.getElementById("gh-oauth-token") || {}).value || (document.getElementById("sub-token") || {}).value || "";
+
+  if (!token.trim()) {
+    if (errEl) errEl.textContent = "Please enter your GitHub Personal Access Token.";
+    return;
+  }
+
+  if (errEl) errEl.innerHTML = '<span style="color:var(--accent);">⏳ Verifying with GitHub...</span>';
+
+  try {
+    const resp = await fetch("https://api.github.com/user", {
+      headers: { "Authorization": `Bearer ${token.trim()}`, "Accept": "application/vnd.github+json" },
+    });
+    if (!resp.ok) { const body = await resp.json().catch(() => ({})); throw new Error(body.message || `GitHub returned ${resp.status}`); }
+    const user = await resp.json();
+
+    await completeOAuthEncryption("github", String(user.id), {
+      username: user.login,
+      avatarUrl: user.avatar_url,
+      name: user.name || user.login,
+    });
+  } catch (e) {
+    if (errEl) errEl.textContent = `GitHub auth failed: ${e.message}`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GOOGLE — Google Identity Services (one-tap / popup)
+// ═══════════════════════════════════════════════════════════════
+//
+// Uses the GIS library's ID token flow (not access token).
+// Returns a JWT id_token containing 'sub' claim = stable user ID.
+// No backend needed — the JWT is verified client-side for our purposes
+// (we only need the sub for key derivation, not for API calls).
+
+async function startGoogleFlow() {
+  const errEl = document.getElementById("oauth-error");
+
+  if (typeof google === "undefined" || !google.accounts) {
+    if (errEl) errEl.textContent = "Google Identity Services library not loaded. Check your network connection.";
+    return;
+  }
+
+  try {
+    google.accounts.id.initialize({
+      client_id: OAUTH_CONFIG.google.clientId,
+      callback: handleGoogleResponse,
+      auto_select: true,  // Enable one-tap if user previously consented
+      cancel_on_tap_outside: false,
+    });
+
+    // Try one-tap first, fall back to popup button
+    google.accounts.id.prompt((notification) => {
+      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+        // One-tap not available — show the rendered button
+        const oauthDiv = document.getElementById("security-tab-oauth");
+        if (oauthDiv && !document.getElementById("g-signin-btn")) {
+          const container = document.createElement("div");
+          container.id = "g-signin-btn";
+          container.style.cssText = "display:flex; justify-content:center; margin:12px 0;";
+          oauthDiv.appendChild(container);
+          google.accounts.id.renderButton(container, {
+            type: "standard",
+            theme: "filled_black",
+            size: "large",
+            text: "signin_with",
+            width: 300,
+          });
+        }
+      }
+    });
+  } catch (e) {
+    if (errEl) errEl.textContent = `Google sign-in error: ${e.message}`;
+  }
+}
+
+function handleGoogleResponse(response) {
+  const errEl = document.getElementById("oauth-error");
+
+  try {
+    // Decode the JWT (we don't need to verify signature for key derivation —
+    // the sub is only used as entropy for our local encryption key)
+    const payload = JSON.parse(atob(response.credential.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+
+    const sub = payload.sub;  // Stable Google user ID
+    const email = payload.email || "";
+    const name = payload.name || email;
+    const picture = payload.picture || "";
+
+    if (!sub) throw new Error("No 'sub' claim in Google ID token");
+
+    completeOAuthEncryption("google", sub, {
+      username: email,
+      avatarUrl: picture,
+      name: name,
+    });
+  } catch (e) {
+    if (errEl) errEl.textContent = `Google auth error: ${e.message}`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MICROSOFT — MSAL.js popup (PKCE, no backend)
+// ═══════════════════════════════════════════════════════════════
+//
+// Uses MSAL.js 2.x PublicClientApplication with loginPopup().
+// Returns account.localAccountId (= oid claim) as stable user ID.
+
+let _msalInstance = null;
+
+function getMsalInstance() {
+  if (_msalInstance) return _msalInstance;
+  if (typeof msal === "undefined" || !msal.PublicClientApplication) return null;
+
+  _msalInstance = new msal.PublicClientApplication({
+    auth: {
+      clientId: OAUTH_CONFIG.microsoft.clientId,
+      authority: `https://login.microsoftonline.com/${OAUTH_CONFIG.microsoft.tenantId}`,
+      redirectUri: CALLBACK_URL,
+    },
+    cache: {
+      cacheLocation: "sessionStorage",
+      storeAuthStateInCookie: false,
+    },
+  });
+  return _msalInstance;
+}
+
+async function startMicrosoftFlow() {
+  const errEl = document.getElementById("oauth-error");
+
+  const msalApp = getMsalInstance();
+  if (!msalApp) {
+    if (errEl) errEl.textContent = "MSAL.js library not loaded. Check your network connection.";
+    return;
+  }
+
+  try {
+    await msalApp.initialize();
+
+    const loginResponse = await msalApp.loginPopup({
+      scopes: ["openid", "profile", "email"],
+      prompt: "select_account",
+    });
+
+    const account = loginResponse.account;
+    const sub = account.localAccountId || account.homeAccountId;
+    const name = account.name || account.username || "";
+    const email = account.username || "";
+
+    if (!sub) throw new Error("No account ID from Microsoft");
+
+    await completeOAuthEncryption("microsoft", sub, {
+      username: email,
+      name: name,
+    });
+  } catch (e) {
+    if (e.errorCode === "user_cancelled") {
+      if (errEl) errEl.textContent = "Sign-in cancelled.";
+    } else {
+      if (errEl) errEl.textContent = `Microsoft auth error: ${e.message || e.errorMessage || e}`;
+    }
+  }
+}
+
+// ── Enhanced updateSecurityBar with OAuth info ──
+
+const _origUpdateSecurityBar = typeof updateSecurityBar === "function" ? updateSecurityBar : null;
+
+updateSecurityBar = function(encrypted, method, userInfo) {
+  const bar = document.getElementById("security-bar");
+  const icon = document.getElementById("security-icon");
+  const label = document.getElementById("security-label");
+  const userSpan = document.getElementById("security-user");
+  if (!bar) return;
+
+  if (encrypted) {
+    bar.className = "security-bar locked";
+    const methodLabel = method === "github" ? "GitHub" : method === "google" ? "Google" : method === "microsoft" ? "Microsoft" : "passphrase";
+
+    if (method && method !== "passphrase" && userInfo) {
+      icon.textContent = "🔒";
+      label.innerHTML = `Encrypted via <strong>${methodLabel}</strong>`;
+      if (userInfo.username) {
+        userSpan.textContent = `@${userInfo.username}`;
+      }
+    } else {
+      icon.textContent = "🔒";
+      label.textContent = "Data encrypted with your passphrase";
+      userSpan.textContent = "";
+    }
+    bar.querySelector("button").textContent = "Change";
+    bar.querySelector("button").onclick = () => showSecurityModal("change");
+  } else {
+    bar.className = "security-bar unlocked";
+    icon.textContent = "🔓";
+    label.textContent = "Data unencrypted — stored in plain text";
+    userSpan.textContent = "";
+    bar.querySelector("button").textContent = "Encrypt Data";
+    bar.querySelector("button").onclick = () => showSecurityModal("setup");
+  }
+};
+
+// ── Enhanced boot: handle OAuth re-authentication ──
+
+
+
+// ── Update OAuth button badges based on config ──
+function updateOAuthBadges() {
+  const badges = [
+    { id: "gh-status-tag", ready: OAUTH_CONFIG.github.ready },
+    { id: "google-status-tag", ready: OAUTH_CONFIG.google.ready },
+    { id: "ms-status-tag", ready: OAUTH_CONFIG.microsoft.ready },
+  ];
+  badges.forEach(b => {
+    const el = document.getElementById(b.id);
+    if (!el) return;
+    if (b.ready) {
+      el.style.background = "var(--success)";
+      el.style.color = "#000";
+      el.textContent = "ready";
+    } else if (b.fallback) {
+      el.style.background = "var(--accent)";
+      el.style.color = "#000";
+      el.textContent = b.fallback;
+    } else {
+      el.style.background = "var(--warn,#d29920)";
+      el.style.color = "#000";
+      el.textContent = "needs client ID";
+    }
+  });
+}
+// Run on load
+setTimeout(updateOAuthBadges, 100);
+
+(async function checkEncryptionState() {
+  const wasEncrypted = localStorage.getItem("ztdc_encrypted") === "true";
+  if (!wasEncrypted) return;
+
+  const method = localStorage.getItem("ztdc_auth_method") || "passphrase";
+
+  if (method === "passphrase") {
+    // Passphrase unlock — show modal
+    showSecurityModal("unlock");
+  } else {
+    // OAuth unlock — show modal with OAuth tab active
+    showSecurityModal("unlock");
+    // Display info will show after re-auth
+    const display = JSON.parse(localStorage.getItem("ztdc_auth_display") || "{}");
+    const bar = document.getElementById("security-bar");
+    if (bar) {
+      const label = document.getElementById("security-label");
+      if (label) label.innerHTML = `🔒 Locked — sign in with <strong>${method}</strong> to unlock`;
+    }
+  }
+})();
+
+
+</script>
+</body>
+</html>
