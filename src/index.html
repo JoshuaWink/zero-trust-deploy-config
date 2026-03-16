@@ -7,6 +7,7 @@
 <style>
   :root {
     --bg: #0d1117; --surface: #161b22; --surface2: #1c2333; --border: #30363d;
+    --card: #1c2333; --card-elevated: #242d3a;
     --text: #e6edf3; --muted: #7d8590; --accent: #58a6ff;
     --success: #3fb950; --warn: #d29920; --error: #f85149;
     --radius: 8px;
@@ -243,8 +244,10 @@
   .security-bar.unlocked { background:#d2992015; border:1px solid var(--warn, #d29920); color:var(--warn, #d29920); }
   .security-bar button { font-size:10px; padding:2px 8px; cursor:pointer; border-radius:4px; border:1px solid currentColor; background:transparent; color:inherit; }
   .security-bar button:hover { opacity:0.8; }
-  #passphrase-modal { position:fixed; inset:0; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:1000; }
-  #passphrase-modal .modal-box { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; max-width:400px; width:90%; }
+  #passphrase-modal { position:fixed; inset:0; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; z-index:1000; backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+  #passphrase-modal .modal-box { background:var(--card-elevated, #242d3a); border:1px solid var(--border); border-radius:12px; padding:24px; max-width:400px; width:90%; box-shadow:0 16px 48px rgba(0,0,0,0.6); position:relative; }
+  #passphrase-modal .modal-close-x { position:absolute; top:10px; right:14px; background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; padding:4px 8px; border-radius:4px; line-height:1; }
+  #passphrase-modal .modal-close-x:hover { color:var(--text); background:rgba(255,255,255,0.1); }
   #passphrase-modal h3 { margin-bottom:12px; }
   #passphrase-modal input { width:100%; margin-bottom:8px; }
   #passphrase-modal .modal-actions { display:flex; gap:8px; margin-top:12px; }
@@ -2559,6 +2562,7 @@ function showSecurityModal(mode) {
 
   modal.innerHTML = `
     <div class="modal-box" style="max-width:440px;">
+      <button class="modal-close-x" onclick="closeSecurityModal()" title="Close" aria-label="Close">&times;</button>
       <h3>${title}</h3>
       <p class="muted" style="font-size:12px; margin-bottom:12px;">
         ${isSetup ? "Choose how to protect your deployment configs. Your data never leaves your browser." :
@@ -2611,10 +2615,21 @@ function showSecurityModal(mode) {
       <div class="modal-actions" style="margin-top:8px; border-top:1px solid var(--border); padding-top:8px;">
         ${isSetup ? '<button class="btn btn-sec" onclick="closeSecurityModal()">Skip (No Encryption)</button>' : ''}
         ${isChange ? '<button class="btn btn-sec" onclick="closeSecurityModal()">Cancel</button>' : ''}
+        ${isUnlock ? '<button class="btn btn-sec" onclick="closeSecurityModal()">Continue without unlocking</button>' : ''}
       </div>
     </div>
   `;
   document.body.appendChild(modal);
+
+  // Click outside modal-box to close (clicking the dark overlay)
+  modal.addEventListener("click", e => {
+    if (e.target === modal) closeSecurityModal();
+  });
+
+  // Escape key to close
+  modal.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeSecurityModal();
+  });
 
   // Focus appropriate input
   setTimeout(() => {
@@ -2765,7 +2780,7 @@ async function unlockWithPassphrase(passphrase) {
   refreshAll();
 }
 
-function updateSecurityBar(encrypted) {
+function updateSecurityBar(encrypted, provider, displayInfo) {
   const bar = document.getElementById("security-bar");
   const icon = document.getElementById("security-icon");
   const label = document.getElementById("security-label");
@@ -2774,8 +2789,16 @@ function updateSecurityBar(encrypted) {
   if (encrypted) {
     bar.className = "security-bar locked";
     icon.textContent = "🔒";
-    label.textContent = "Data encrypted with your passphrase";
-    bar.querySelector("button").textContent = "Change Passphrase";
+    const method = provider || localStorage.getItem("ztdc_auth_method") || "passphrase";
+    if (method !== "passphrase") {
+      const display = displayInfo || JSON.parse(localStorage.getItem("ztdc_auth_display") || "{}");
+      const who = display.name || display.login || method;
+      label.innerHTML = `Encrypted via <strong>${method}</strong> (${who})`;
+      bar.querySelector("button").textContent = "Change Security";
+    } else {
+      label.textContent = "Data encrypted with your passphrase";
+      bar.querySelector("button").textContent = "Change Passphrase";
+    }
     bar.querySelector("button").onclick = () => showPassphraseModal("change");
   } else {
     bar.className = "security-bar unlocked";
@@ -2881,6 +2904,10 @@ async function deriveKeyFromOAuth(provider, sub) {
 async function completeOAuthEncryption(provider, sub, displayInfo) {
   _sessionKey = await deriveKeyFromOAuth(provider, sub);
   _encryptionEnabled = true;
+
+  // Persist session for page-refresh resilience (sessionStorage = tab lifetime only)
+  sessionStorage.setItem("ztdc_oauth_provider", provider);
+  sessionStorage.setItem("ztdc_oauth_sub", sub);
 
   // Migrate existing plaintext data
   const existingProfiles = localStorage.getItem(STORAGE_KEY);
@@ -3309,6 +3336,37 @@ setTimeout(updateOAuthBadges, 100);
   if (!wasEncrypted) return;
 
   const method = localStorage.getItem("ztdc_auth_method") || "passphrase";
+
+  // ── Silent restore: if we have a valid session in sessionStorage, skip the modal ──
+  if (method !== "passphrase") {
+    const cachedProvider = sessionStorage.getItem("ztdc_oauth_provider");
+    const cachedSub = sessionStorage.getItem("ztdc_oauth_sub");
+    if (cachedProvider && cachedSub) {
+      try {
+        _sessionKey = await deriveKeyFromOAuth(cachedProvider, cachedSub);
+        _encryptionEnabled = true;
+        // Verify the key works against the check blob
+        const check = localStorage.getItem("ztdc_enc_check");
+        if (check) await decryptData(check, _sessionKey);
+        // Success — restore UI without modal
+        const display = JSON.parse(localStorage.getItem("ztdc_auth_display") || "{}");
+        enableEncryptedStorage();
+        updateSecurityBar(true, cachedProvider, display);
+        await loadProfilesSecure();
+        await loadCustomRecipesSecure();
+        refreshAll();
+        console.log("[ZTDC] Session restored from cache (" + cachedProvider + ")");
+        return; // No modal needed
+      } catch (e) {
+        // Cached session invalid — clear and fall through to modal
+        console.warn("[ZTDC] Cached session invalid, prompting re-auth:", e.message);
+        sessionStorage.removeItem("ztdc_oauth_provider");
+        sessionStorage.removeItem("ztdc_oauth_sub");
+        _sessionKey = null;
+        _encryptionEnabled = false;
+      }
+    }
+  }
 
   if (method === "passphrase") {
     // Passphrase unlock — show modal
