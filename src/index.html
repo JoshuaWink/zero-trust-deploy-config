@@ -707,6 +707,7 @@ curl -sX POST https://ztdc-github-oauth.orchie.workers.dev/api/v1/export \
 let contracts = {};
 let profiles = {};
 let recipes = {};
+let _signedOut = false; // true after signOut() — shows locked UI state
 const STORAGE_KEY = "ztdc_profiles";
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -1112,9 +1113,23 @@ function fmtNomadHcl(p) {
    RENDER: OVERVIEW
    ══════════════════════════════════════════════════════════════════════ */
 function renderOverview() {
+  const out = document.getElementById("ov-out");
+
+  // If signed out with encrypted data, show locked state
+  if (_signedOut) {
+    const method = localStorage.getItem("ztdc_auth_method") || "passphrase";
+    const methodLabel = method === "github" ? "GitHub" : method === "google" ? "Google" : method === "microsoft" ? "Microsoft" : "your passphrase";
+    out.innerHTML = `<div class="card" style="text-align:center; padding:32px;">
+      <div style="font-size:36px; margin-bottom:12px;">🔐</div>
+      <h3 style="margin-bottom:8px;">Overview Locked</h3>
+      <p class="muted" style="font-size:13px; margin-bottom:16px;">Sign in with <strong>${methodLabel}</strong> to view your profiles, validate, and export.</p>
+      <button class="btn" onclick="showSecurityModal('unlock')">�� Unlock</button>
+    </div>`;
+    return;
+  }
+
   const pid = document.getElementById("ov-profile").value;
   const p = profiles[pid];
-  const out = document.getElementById("ov-out");
 
   if (!p) {
     out.innerHTML = `<div class="card"><div class="empty">
@@ -1271,6 +1286,20 @@ function togglePlatforms() {
    ══════════════════════════════════════════════════════════════════════ */
 function renderProfiles() {
   const list = document.getElementById("profile-list");
+
+  // If signed out with encrypted data, show locked state
+  if (_signedOut) {
+    const method = localStorage.getItem("ztdc_auth_method") || "passphrase";
+    const methodLabel = method === "github" ? "GitHub" : method === "google" ? "Google" : method === "microsoft" ? "Microsoft" : "your passphrase";
+    list.innerHTML = `<div class="card" style="text-align:center; padding:32px;">
+      <div style="font-size:36px; margin-bottom:12px;">🔐</div>
+      <h3 style="margin-bottom:8px;">Data Locked</h3>
+      <p class="muted" style="font-size:13px; margin-bottom:16px;">Your profiles are encrypted and safe. Sign in with <strong>${methodLabel}</strong> to view and edit them.</p>
+      <button class="btn" onclick="showSecurityModal('unlock')">🔓 Unlock</button>
+    </div>`;
+    return;
+  }
+
   const ids = Object.keys(profiles).sort();
   if (!ids.length) {
     list.innerHTML = `<div class="empty">No profiles yet. Click <strong>+ New Profile</strong> to create one.</div>`;
@@ -2703,6 +2732,8 @@ function closePassphraseModal() { closeSecurityModal(); }
 async function signOut() {
   const method = localStorage.getItem("ztdc_auth_method") || "passphrase";
 
+  _signedOut = true;
+
   // Clear in-memory session
   _sessionKey = null;
   _encryptionEnabled = false;
@@ -2715,13 +2746,13 @@ async function signOut() {
   profiles = {};
   customRecipes = {};
 
-  // Re-disable encrypted storage overrides (restore plain mode stubs)
+  // CRITICAL: After sign-out, do NOT let save functions overwrite encrypted blobs
+  // in-memory data is empty; writing it would destroy the locked ciphertext.
+  // These stubs only update the DOM — localStorage stays untouched.
   saveProfiles = function() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
     refreshAll();
   };
   saveCustomRecipes = function() {
-    localStorage.setItem(CUSTOM_RECIPES_KEY, JSON.stringify(customRecipes));
     renderMyRecipes();
   };
 
@@ -2820,6 +2851,7 @@ async function handlePassphrase(mode) {
     const appSalt = new TextEncoder().encode("ztdc-encryption-v1");
     _sessionKey = await deriveKeyFromPassphrase(passphrase, appSalt);
     _encryptionEnabled = true;
+    _signedOut = false;
 
     // If there's existing unencrypted data, re-encrypt it
     const existingProfiles = localStorage.getItem(STORAGE_KEY);
@@ -2904,8 +2936,9 @@ function updateSecurityBar(encrypted, provider, displayInfo) {
       icon.textContent = "🔒";
       label.textContent = "Data encrypted with your passphrase";
       if (userSpan) userSpan.textContent = "";
-      if (signoutBtn) signoutBtn.style.display = "none";
     }
+    // Sign Out visible for ALL encrypted modes
+    if (signoutBtn) { signoutBtn.style.display = ""; signoutBtn.textContent = "Sign Out"; }
     if (actionBtn) { actionBtn.textContent = "Change"; actionBtn.onclick = () => showPassphraseModal("change"); }
   } else {
     bar.className = "security-bar unlocked";
@@ -3012,6 +3045,7 @@ async function deriveKeyFromOAuth(provider, sub) {
 async function completeOAuthEncryption(provider, sub, displayInfo) {
   _sessionKey = await deriveKeyFromOAuth(provider, sub);
   _encryptionEnabled = true;
+  _signedOut = false;
 
   // Persist session for page-refresh resilience (sessionStorage = tab lifetime only)
   sessionStorage.setItem("ztdc_oauth_provider", provider);
@@ -3390,13 +3424,13 @@ updateSecurityBar = function(encrypted, method, userInfo) {
       const who = display.name || display.login || display.username || method;
       label.innerHTML = `Encrypted via <strong>${methodLabel}</strong>`;
       userSpan.textContent = who ? `(${who})` : "";
-      if (signoutBtn) signoutBtn.style.display = "";
     } else {
-      icon.textContent = "🔒";
+      icon.textContent = "��";
       label.textContent = "Data encrypted with your passphrase";
       userSpan.textContent = "";
-      if (signoutBtn) signoutBtn.style.display = "none";
     }
+    // Sign Out visible for ALL encrypted modes
+    if (signoutBtn) { signoutBtn.style.display = ""; signoutBtn.textContent = "Sign Out"; }
     if (actionBtn) { actionBtn.textContent = "Change"; actionBtn.onclick = () => showSecurityModal("change"); }
   } else {
     bar.className = "security-bar unlocked";
