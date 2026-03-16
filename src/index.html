@@ -1486,6 +1486,7 @@ function loadCustomRecipes() {
 
 function saveCustomRecipes() {
   localStorage.setItem(CUSTOM_RECIPES_KEY, JSON.stringify(customRecipes));
+  renderMyRecipes();
 }
 
 // ── Sub-tab navigation ──
@@ -1981,9 +1982,13 @@ function loadRecipeIntoBuilder(id) {
 function deleteCustomRecipe(id) {
   if (!confirm(`Delete recipe "${customRecipes[id]?.name || id}"?`)) return;
   delete customRecipes[id];
-  saveCustomRecipes();
-  renderMyRecipes();
-  updateRecipeCounts();
+  // saveCustomRecipes already triggers renderMyRecipes after save (sync or async)
+  const result = saveCustomRecipes();
+  if (result && typeof result.then === "function") {
+    result.then(() => updateRecipeCounts());
+  } else {
+    updateRecipeCounts();
+  }
 }
 
 function exportRecipeJson() {
@@ -2398,19 +2403,23 @@ const DEMOS = {
 function loadDemos() {
   let n = 0;
   for (const [id, p] of Object.entries(DEMOS)) { if (!profiles[id]) { profiles[id] = JSON.parse(JSON.stringify(p)); n++; } }
-  saveProfiles();
   const msg = document.getElementById("demo-msg");
   msg.style.display = "block";
-  if (n > 0) {
-    msg.innerHTML = `<div style="background:#23863620; border:1px solid var(--success); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--success);">
+  const afterSave = () => {
+    if (n > 0) {
+      msg.innerHTML = `<div style="background:#23863620; border:1px solid var(--success); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--success);">
       ✅ Loaded ${n} demo profile${n>1?"s":""}! Select one above to see it in action.</div>`;
-    // Auto-select first demo
-    const sel = document.getElementById("ov-profile");
-    if (sel) { sel.value = "saas-api-prod"; renderOverview(); }
-  } else {
-    msg.innerHTML = `<div style="background:#1f6feb20; border:1px solid var(--accent); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--accent);">
+      // Auto-select first demo — after populateSelects fills the dropdown
+      const sel = document.getElementById("ov-profile");
+      if (sel) { sel.value = "saas-api-prod"; renderOverview(); }
+    } else {
+      msg.innerHTML = `<div style="background:#1f6feb20; border:1px solid var(--accent); border-radius:var(--radius); padding:10px 14px; font-size:13px; color:var(--accent);">
       Demos already loaded. Clear first to reload.</div>`;
-  }
+    }
+  };
+  const result = saveProfiles();
+  // saveProfiles may return a Promise (encrypted mode) or undefined (plain)
+  if (result && typeof result.then === "function") { result.then(afterSave); } else { afterSave(); }
 }
 
 function clearDemos() {
@@ -2532,10 +2541,18 @@ async function loadCustomRecipesSecure() {
 
 // Replace sync functions with async wrappers when encryption is enabled
 function enableEncryptedStorage() {
-  saveProfiles = function() { saveProfilesSecure(); };
-  loadProfiles = function() { loadProfilesSecure().then(() => refreshAll()); };
-  saveCustomRecipes = function() { saveCustomRecipesSecure(); };
-  loadCustomRecipes = function() { loadCustomRecipesSecure().then(() => { renderMyRecipes(); }); };
+  saveProfiles = function() {
+    return saveProfilesSecure().then(() => refreshAll());
+  };
+  loadProfiles = function() {
+    return loadProfilesSecure().then(() => refreshAll());
+  };
+  saveCustomRecipes = function() {
+    return saveCustomRecipesSecure().then(() => renderMyRecipes());
+  };
+  loadCustomRecipes = function() {
+    return loadCustomRecipesSecure().then(() => { renderMyRecipes(); });
+  };
 }
 
 // ── Passphrase Modal ──
