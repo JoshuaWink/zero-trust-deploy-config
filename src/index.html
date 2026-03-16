@@ -264,6 +264,9 @@
   .security-method-tabs { display:flex; gap:0; margin-bottom:16px; border-radius:8px; overflow:hidden; border:1px solid var(--border); }
   .security-method-tabs button { flex:1; padding:8px 12px; border:none; background:var(--bg); color:var(--muted); cursor:pointer; font-size:12px; font-weight:500; transition:all 0.2s; }
   .security-method-tabs button.active { background:var(--accent); color:#fff; }
+  .garbled { font-family: monospace; color: var(--muted); opacity: 0.7; word-break: break-all; font-size: 11px; }
+  .garbled-card { position: relative; overflow: hidden; }
+  .garbled-card::after { content: "🔐 Encrypted"; position: absolute; top: 8px; right: 8px; font-size: 10px; background: var(--warn, #d29920); color: #000; padding: 2px 6px; border-radius: 4px; font-family: system-ui; }
   .security-method-tabs button:hover:not(.active) { background:#1f6feb10; }
 
 
@@ -1115,18 +1118,7 @@ function fmtNomadHcl(p) {
 function renderOverview() {
   const out = document.getElementById("ov-out");
 
-  // If signed out with encrypted data, show locked state
-  if (_signedOut) {
-    const method = localStorage.getItem("ztdc_auth_method") || "passphrase";
-    const methodLabel = method === "github" ? "GitHub" : method === "google" ? "Google" : method === "microsoft" ? "Microsoft" : "your passphrase";
-    out.innerHTML = `<div class="card" style="text-align:center; padding:32px;">
-      <div style="font-size:36px; margin-bottom:12px;">🔐</div>
-      <h3 style="margin-bottom:8px;">Overview Locked</h3>
-      <p class="muted" style="font-size:13px; margin-bottom:16px;">Sign in with <strong>${methodLabel}</strong> to view your profiles, validate, and export.</p>
-      <button class="btn" onclick="showSecurityModal('unlock')">�� Unlock</button>
-    </div>`;
-    return;
-  }
+  // Garbled UX: data always shows — garbled when signed out or wrong key
 
   const pid = document.getElementById("ov-profile").value;
   const p = profiles[pid];
@@ -1287,18 +1279,7 @@ function togglePlatforms() {
 function renderProfiles() {
   const list = document.getElementById("profile-list");
 
-  // If signed out with encrypted data, show locked state
-  if (_signedOut) {
-    const method = localStorage.getItem("ztdc_auth_method") || "passphrase";
-    const methodLabel = method === "github" ? "GitHub" : method === "google" ? "Google" : method === "microsoft" ? "Microsoft" : "your passphrase";
-    list.innerHTML = `<div class="card" style="text-align:center; padding:32px;">
-      <div style="font-size:36px; margin-bottom:12px;">🔐</div>
-      <h3 style="margin-bottom:8px;">Data Locked</h3>
-      <p class="muted" style="font-size:13px; margin-bottom:16px;">Your profiles are encrypted and safe. Sign in with <strong>${methodLabel}</strong> to view and edit them.</p>
-      <button class="btn" onclick="showSecurityModal('unlock')">🔓 Unlock</button>
-    </div>`;
-    return;
-  }
+  // Garbled UX: data always shows — garbled when signed out or wrong key
 
   const ids = Object.keys(profiles).sort();
   if (!ids.length) {
@@ -1308,7 +1289,7 @@ function renderProfiles() {
   list.innerHTML = ids.map(id => {
     const p = profiles[id];
     const cN = (contracts[p.platform] || {}).name || p.platform;
-    return `<div class="card">
+    return `<div class="card${_signedOut ? " garbled-card" : ""}">
       <div class="flex-b" style="flex-direction:row; flex-wrap:wrap;">
         <div>
           <h3 style="margin:0;">${esc(p.name)}</h3>
@@ -2518,6 +2499,102 @@ async function decryptData(encrypted, key) {
   return JSON.parse(new TextDecoder().decode(decrypted));
 }
 
+// ── Garbled Data Helpers (zero-knowledge UX) ──
+// When signed out or wrong key: show structured-but-garbled data
+// AES-GCM always throws on wrong key, so we fabricate "decrypted nonsense"
+// from the actual ciphertext bytes — deterministic, looks like data, but useless.
+
+function garbleFromCiphertext(rawEncrypted, storageKey) {
+  // Extract raw bytes from the encrypted blob
+  if (!rawEncrypted || !rawEncrypted.startsWith(ENCRYPTED_PREFIX)) {
+    return storageKey === STORAGE_KEY ? {} : {};
+  }
+  const b64 = rawEncrypted.slice(ENCRYPTED_PREFIX.length);
+  let bytes;
+  try { bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0)); }
+  catch { return {}; }
+
+  // Use ciphertext bytes (skip salt+iv = 28 bytes) to generate deterministic garbled values
+  const ct = bytes.slice(28);
+  const hex = (start, len) => Array.from(ct.slice(start, start + len))
+    .map(b => b.toString(16).padStart(2, "0")).join("");
+  const garbledStr = (start, len) => {
+    const segment = ct.slice(start, start + len);
+    // Mix printable ASCII with hex to look like "decrypted nonsense"
+    return Array.from(segment).map(b => {
+      if (b >= 33 && b <= 126) return String.fromCharCode(b);
+      return "\\x" + b.toString(16).padStart(2, "0");
+    }).join("");
+  };
+
+  if (storageKey === STORAGE_KEY) {
+    // Garble as profile-like data — create 1-3 fake profiles from ciphertext
+    const numProfiles = Math.max(1, Math.min(3, (ct[0] || 1) % 4));
+    const result = {};
+    for (let i = 0; i < numProfiles; i++) {
+      const offset = i * 80;
+      const id = hex(offset, 6) + "-" + hex(offset + 6, 4);
+      result[id] = {
+        id: id,
+        name: garbledStr(offset + 10, 12),
+        platform: garbledStr(offset + 22, 8),
+        environment: garbledStr(offset + 30, 6),
+        vars: [{
+          key: garbledStr(offset + 36, 10),
+          required: !!(ct[offset + 46] & 1),
+          secret_ref: {
+            backend: garbledStr(offset + 47, 6),
+            path: garbledStr(offset + 53, 14),
+          },
+        }, {
+          key: garbledStr(offset + 67, 8),
+          required: !!(ct[offset + 75] & 1),
+          secret_ref: {
+            backend: garbledStr(offset + 76, 4),
+            path: hex(offset + 80, 10),
+          },
+        }],
+      };
+    }
+    return result;
+  } else {
+    // Garble as recipe-like data
+    const numRecipes = Math.max(1, Math.min(2, (ct[1] || 1) % 3));
+    const result = {};
+    for (let i = 0; i < numRecipes; i++) {
+      const offset = i * 60;
+      const id = hex(offset, 8);
+      result[id] = {
+        id: id,
+        name: garbledStr(offset + 8, 14),
+        description: garbledStr(offset + 22, 20),
+        platforms: [garbledStr(offset + 42, 6)],
+        steps: [garbledStr(offset + 48, 12)],
+      };
+    }
+    return result;
+  }
+}
+
+async function softDecryptData(encrypted, key, storageKey) {
+  // Attempt real decryption — on success return clean data.
+  // On failure (wrong key, no key) return garbled data from ciphertext.
+  if (!encrypted) return {};
+  if (!encrypted.startsWith(ENCRYPTED_PREFIX)) {
+    try { return JSON.parse(encrypted); } catch { return {}; }
+  }
+  if (!key) {
+    // No key at all — return garbled representation
+    return garbleFromCiphertext(encrypted, storageKey);
+  }
+  try {
+    return await decryptData(encrypted, key);
+  } catch {
+    // Wrong key — garble it (looks like "decrypted nonsense")
+    return garbleFromCiphertext(encrypted, storageKey);
+  }
+}
+
 // ── Secure Storage Wrappers ──
 
 async function secureSetItem(storageKey, data) {
@@ -2532,13 +2609,9 @@ async function secureSetItem(storageKey, data) {
 async function secureGetItem(storageKey) {
   const raw = localStorage.getItem(storageKey);
   if (!raw) return null;
-  if (_encryptionEnabled && _sessionKey && raw.startsWith(ENCRYPTED_PREFIX)) {
-    try {
-      return await decryptData(raw, _sessionKey);
-    } catch (e) {
-      console.warn("Decryption failed for", storageKey, "— data may use a different passphrase.");
-      return null;
-    }
+  if (raw.startsWith(ENCRYPTED_PREFIX)) {
+    // Always attempt soft decrypt — returns garbled data on wrong/no key
+    return await softDecryptData(raw, _sessionKey, storageKey);
   }
   // Plain JSON fallback
   try { return JSON.parse(raw); } catch { return null; }
@@ -2585,6 +2658,14 @@ function enableEncryptedStorage() {
   };
 }
 
+// ── Soft-load: populate in-memory data from localStorage (garbled if no/wrong key) ──
+async function softLoadAllData() {
+  const rawP = localStorage.getItem(STORAGE_KEY);
+  const rawR = localStorage.getItem(CUSTOM_RECIPES_KEY);
+  profiles = rawP ? await softDecryptData(rawP, _sessionKey, STORAGE_KEY) : {};
+  customRecipes = rawR ? await softDecryptData(rawR, _sessionKey, CUSTOM_RECIPES_KEY) : {};
+}
+
 // ── Passphrase Modal ──
 
 function showSecurityModal(mode) {
@@ -2621,6 +2702,7 @@ function showSecurityModal(mode) {
       <div class="security-method-tabs">
         <button id="tab-oauth" class="${defaultTab === 'oauth' ? 'active' : ''}" onclick="switchSecurityTab('oauth')">🔑 Sign In</button>
         <button id="tab-passphrase" class="${defaultTab === 'passphrase' ? 'active' : ''}" onclick="switchSecurityTab('passphrase')">🔒 Passphrase</button>
+        <button id="tab-multifactor" class="" onclick="switchSecurityTab('multifactor')">🔐 Multi-Factor</button>
       </div>` : ''}
 
       <!-- OAuth Tab -->
@@ -2657,6 +2739,37 @@ function showSecurityModal(mode) {
         <div class="modal-actions">
           <button class="btn" onclick="handlePassphrase('${mode}')">${isSetup ? 'Enable Encryption' : isChange ? 'Change Passphrase' : 'Unlock'}</button>
         </div>
+
+      <!-- Multi-Factor Tab -->
+      <div id="security-tab-multifactor" style="display:none;">
+        <p class="muted" style="font-size:11px; margin-bottom:12px;">🔐 <strong>Maximum security:</strong> Your data requires <em>both</em> a passphrase and an OAuth sign-in to decrypt. Neither factor alone can unlock your data.</p>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <!-- Step 1: Passphrase -->
+          <div style="border:1px solid var(--border); border-radius:8px; padding:12px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+              <span style="background:var(--accent); color:#fff; border-radius:50%; width:22px; height:22px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;">1</span>
+              <strong style="font-size:12px;">Enter Passphrase</strong>
+            </div>
+            <input id="mf-pp-input" type="password" placeholder="Enter passphrase (min 6 characters)" style="width:100%;">
+            <input id="mf-pp-confirm" type="password" placeholder="Confirm passphrase" style="width:100%; margin-top:6px; display:${isSetup ? "block" : "none"};">
+            <button class="btn btn-s" style="margin-top:8px;" onclick="handleMfPassphrase('${mode}')">Set Passphrase</button>
+            <div id="mf-pp-status" style="font-size:11px; margin-top:4px; color:var(--muted);">Waiting for passphrase…</div>
+          </div>
+          <!-- Step 2: OAuth -->
+          <div style="border:1px solid var(--border); border-radius:8px; padding:12px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+              <span style="background:var(--accent); color:#fff; border-radius:50%; width:22px; height:22px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;">2</span>
+              <strong style="font-size:12px;">Sign In with OAuth</strong>
+            </div>
+            <div class="oauth-buttons" style="gap:6px;">
+              <button class="oauth-btn" onclick="startOAuthFlow('github')" style="padding:8px 10px;"><svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg> GitHub</button>
+              <button class="oauth-btn" onclick="startOAuthFlow('google')" style="padding:8px 10px;"><svg viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Google</button>
+            </div>
+            <div id="mf-oauth-status" style="font-size:11px; margin-top:4px; color:var(--muted);">Waiting for OAuth sign-in…</div>
+          </div>
+        </div>
+        <div id="mf-error" style="color:var(--error); font-size:11px; min-height:16px; margin-top:8px;"></div>
+      </div>
       </div>
 
       <div class="modal-actions" style="margin-top:8px; border-top:1px solid var(--border); padding-top:8px;">
@@ -2700,23 +2813,77 @@ function showPassphraseModal(mode) { showSecurityModal(mode); }
 function switchSecurityTab(tab) {
   const oauthTab = document.getElementById("security-tab-oauth");
   const passTab = document.getElementById("security-tab-passphrase");
+  const mfTab = document.getElementById("security-tab-multifactor");
   const oauthBtn = document.getElementById("tab-oauth");
   const passBtn = document.getElementById("tab-passphrase");
+  const mfBtn = document.getElementById("tab-multifactor");
 
+  // Hide all tabs
+  if (oauthTab) oauthTab.style.display = "none";
+  if (passTab) passTab.style.display = "none";
+  if (mfTab) mfTab.style.display = "none";
+
+  // Deactivate all buttons
+  if (oauthBtn) oauthBtn.classList.remove("active");
+  if (passBtn) passBtn.classList.remove("active");
+  if (mfBtn) mfBtn.classList.remove("active");
+
+  // Show selected tab
   if (tab === "oauth") {
     if (oauthTab) oauthTab.style.display = "block";
-    if (passTab) passTab.style.display = "none";
     if (oauthBtn) oauthBtn.classList.add("active");
-    if (passBtn) passBtn.classList.remove("active");
-  } else {
-    if (oauthTab) oauthTab.style.display = "none";
+  } else if (tab === "passphrase") {
     if (passTab) passTab.style.display = "block";
-    if (oauthBtn) oauthBtn.classList.remove("active");
     if (passBtn) passBtn.classList.add("active");
     setTimeout(() => {
       const inp = document.getElementById("pp-input");
       if (inp) inp.focus();
     }, 50);
+  } else if (tab === "multifactor") {
+    if (mfTab) mfTab.style.display = "block";
+    if (mfBtn) mfBtn.classList.add("active");
+    // Reset multi-factor pending state
+    _mfPendingOAuth = null;
+    _mfPendingPassphrase = null;
+    setTimeout(() => {
+      const inp = document.getElementById("mf-pp-input");
+      if (inp) inp.focus();
+    }, 50);
+  }
+}
+
+async function handleMfPassphrase(mode) {
+  const errEl = document.getElementById("mf-error");
+  const input = document.getElementById("mf-pp-input");
+  const confirm = document.getElementById("mf-pp-confirm");
+  const statusEl = document.getElementById("mf-pp-status");
+  const passphrase = (input ? input.value : "").trim();
+
+  if (passphrase.length < 6) {
+    if (errEl) errEl.textContent = "Passphrase must be at least 6 characters.";
+    return;
+  }
+
+  if (mode === "setup") {
+    const conf = (confirm ? confirm.value : "").trim();
+    if (passphrase !== conf) {
+      if (errEl) errEl.textContent = "Passphrases don't match.";
+      return;
+    }
+  }
+
+  // Store the passphrase half
+  _mfPendingPassphrase = passphrase;
+  if (statusEl) {
+    statusEl.innerHTML = "✅ Passphrase set";
+    statusEl.style.color = "var(--success)";
+  }
+  if (errEl) errEl.textContent = "";
+
+  // Try to complete if OAuth is already done
+  const completed = await completeMultiFactorIfReady();
+  if (!completed) {
+    console.log("[ZTDC] Multi-factor: passphrase set, waiting for OAuth");
   }
 }
 
@@ -2742,12 +2909,13 @@ async function signOut() {
   sessionStorage.removeItem("ztdc_oauth_provider");
   sessionStorage.removeItem("ztdc_oauth_sub");
 
-  // Reset in-memory data to empty — the real data is still in localStorage (encrypted)
-  profiles = {};
-  customRecipes = {};
+  // Load garbled representation of encrypted data — always visible, never useful
+  // softLoadAllData uses softDecryptData which returns garbled profiles/recipes
+  // from the ciphertext bytes since _sessionKey is now null.
+  await softLoadAllData();
 
   // CRITICAL: After sign-out, do NOT let save functions overwrite encrypted blobs
-  // in-memory data is empty; writing it would destroy the locked ciphertext.
+  // in-memory data is garbled; writing it would destroy the locked ciphertext.
   // These stubs only update the DOM — localStorage stays untouched.
   saveProfiles = function() {
     refreshAll();
@@ -2765,7 +2933,7 @@ async function signOut() {
   const signoutBtn = document.getElementById("security-signout-btn");
   if (bar) bar.className = "security-bar locked";
   if (icon) icon.textContent = "🔐";
-  if (label) label.innerHTML = `Signed out — data is <strong>locked</strong>. Sign in again to access it.`;
+  if (label) label.innerHTML = `Signed out — showing <strong>garbled data</strong>. Sign in to decrypt.`;
   if (userSpan) userSpan.textContent = "";
   if (signoutBtn) signoutBtn.style.display = "none";
   if (actionBtn) {
@@ -2798,7 +2966,7 @@ function _showSignedOutCipherPreview(method) {
       <span style="font-size:20px;">🔐</span>
       <div>
         <div style="font-weight:600; color:var(--text);">Signed out of ${method}</div>
-        <div style="color:var(--muted); font-size:11px;">Your data is still here — locked inside these ciphertext blobs:</div>
+        <div style="color:var(--muted); font-size:11px;">Your data is still visible as garbled text. The original ciphertext:</div>
       </div>
       <button onclick="document.getElementById('signout-toast').remove()" style="margin-left:auto; background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; padding:0 4px;">&times;</button>
     </div>
@@ -3038,11 +3206,100 @@ async function deriveKeyFromOAuth(provider, sub) {
   );
 }
 
+// ═══════════════════════════════════════════════════════
+// MULTI-FACTOR KEY DERIVATION — passphrase + OAuth identity
+// ═══════════════════════════════════════════════════════
+
+async function deriveKeyFromMultiFactor(passphrase, provider, sub) {
+  // Combines passphrase + OAuth identity into a single AES-256 key.
+  // Both factors are required — passphrase alone or OAuth alone won't work.
+  const enc = new TextEncoder();
+  const salt = enc.encode(`ztdc-multifactor-v1:${provider}:${sub}`);
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw", enc.encode(passphrase), "PBKDF2", false, ["deriveKey"]
+  );
+  return crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
+
+// Track multi-factor state during modal flow
+let _mfPendingOAuth = null;  // { provider, sub, displayInfo } — set after OAuth step
+let _mfPendingPassphrase = null;  // string — set after passphrase step
+
+async function completeMultiFactorIfReady() {
+  if (!_mfPendingOAuth || !_mfPendingPassphrase) return false;
+
+  const { provider, sub, displayInfo } = _mfPendingOAuth;
+  const passphrase = _mfPendingPassphrase;
+
+  _sessionKey = await deriveKeyFromMultiFactor(passphrase, provider, sub);
+  _encryptionEnabled = true;
+  _signedOut = false;
+
+  // Persist session for page-refresh resilience
+  sessionStorage.setItem("ztdc_oauth_provider", provider);
+  sessionStorage.setItem("ztdc_oauth_sub", sub);
+  sessionStorage.setItem("ztdc_mf_flag", "true");
+
+  // Migrate existing plaintext data
+  const existingProfiles = localStorage.getItem(STORAGE_KEY);
+  const existingRecipes = localStorage.getItem(CUSTOM_RECIPES_KEY);
+
+  if (existingProfiles && !existingProfiles.startsWith(ENCRYPTED_PREFIX)) {
+    try { profiles = JSON.parse(existingProfiles); await saveProfilesSecure(); } catch {}
+  }
+  if (existingRecipes && !existingRecipes.startsWith(ENCRYPTED_PREFIX)) {
+    try { customRecipes = JSON.parse(existingRecipes); await saveCustomRecipesSecure(); } catch {}
+  }
+
+  localStorage.setItem("ztdc_encrypted", "true");
+  localStorage.setItem("ztdc_auth_method", provider + "+passphrase");
+  localStorage.setItem("ztdc_auth_display", JSON.stringify(displayInfo));
+  localStorage.setItem("ztdc_enc_check", await encryptData({check: true}, _sessionKey));
+
+  enableEncryptedStorage();
+  updateSecurityBar(true, provider + "+passphrase", displayInfo);
+  closeSecurityModal();
+
+  await loadProfilesSecure();
+  await loadCustomRecipesSecure();
+  refreshAll();
+
+  // Clear pending state
+  _mfPendingOAuth = null;
+  _mfPendingPassphrase = null;
+
+  return true;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // SHARED OAUTH COMPLETION — after getting provider + sub
 // ═══════════════════════════════════════════════════════════════
 
 async function completeOAuthEncryption(provider, sub, displayInfo) {
+  // Check if multi-factor modal is active — if so, store OAuth half and try to complete
+  const mfTab = document.getElementById("security-tab-multifactor");
+  if (mfTab && mfTab.style.display !== "none") {
+    _mfPendingOAuth = { provider, sub, displayInfo };
+    // Update the OAuth status indicator in the multi-factor tab
+    const mfOAuthStatus = document.getElementById("mf-oauth-status");
+    if (mfOAuthStatus) {
+      mfOAuthStatus.innerHTML = `✅ Signed in as <strong>${displayInfo.name || displayInfo.login || displayInfo.username || provider}</strong>`;
+      mfOAuthStatus.style.color = "var(--success)";
+    }
+    const completed = await completeMultiFactorIfReady();
+    if (!completed) {
+      // Still waiting for passphrase — keep modal open
+      console.log("[ZTDC] Multi-factor: OAuth done, waiting for passphrase");
+    }
+    return;
+  }
+
   _sessionKey = await deriveKeyFromOAuth(provider, sub);
   _encryptionEnabled = true;
   _signedOut = false;
@@ -3416,9 +3673,11 @@ updateSecurityBar = function(encrypted, method, userInfo) {
 
   if (encrypted) {
     bar.className = "security-bar locked";
-    const methodLabel = method === "github" ? "GitHub" : method === "google" ? "Google" : method === "microsoft" ? "Microsoft" : "passphrase";
+    const isMultiFactor = method && method.includes("+passphrase");
+    const baseProvider = isMultiFactor ? method.replace("+passphrase", "") : method;
+    const methodLabel = isMultiFactor ? baseProvider.charAt(0).toUpperCase() + baseProvider.slice(1) + " + Passphrase" : method === "github" ? "GitHub" : method === "google" ? "Google" : method === "microsoft" ? "Microsoft" : "passphrase";
 
-    if (method && method !== "passphrase") {
+    if (method && method !== "passphrase" || isMultiFactor) {
       icon.textContent = "🔒";
       const display = userInfo || JSON.parse(localStorage.getItem("ztdc_auth_display") || "{}");
       const who = display.name || display.login || display.username || method;
@@ -3486,7 +3745,13 @@ setTimeout(updateOAuthBadges, 100);
     const cachedSub = sessionStorage.getItem("ztdc_oauth_sub");
     if (cachedProvider && cachedSub) {
       try {
-        _sessionKey = await deriveKeyFromOAuth(cachedProvider, cachedSub);
+        const isMF = sessionStorage.getItem("ztdc_mf_flag") === "true";
+        if (isMF) {
+          // Multi-factor restore requires passphrase — can't silently restore, fall through to modal
+          throw new Error("Multi-factor requires passphrase re-entry");
+        } else {
+          _sessionKey = await deriveKeyFromOAuth(cachedProvider, cachedSub);
+        }
         _encryptionEnabled = true;
         // Verify the key works against the check blob
         const check = localStorage.getItem("ztdc_enc_check");
